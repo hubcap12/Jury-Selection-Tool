@@ -21,3 +21,7 @@ test.json
 # Large media (too big for GitHub)
 *.mp4
 *.mov
+
+# Development files
+jury_development.py
+test_populate.py
