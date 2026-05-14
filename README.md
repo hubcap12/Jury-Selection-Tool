@@ -57,4 +57,4 @@ This application is fully open source. The complete source code (`jury.py`) is a
 
 ## License
 
-MIT License — free to use, modify, and distribute.
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and distribute for non-commercial purposes. Commercial use is not permitted.
