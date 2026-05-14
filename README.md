@@ -2,6 +2,8 @@
 
 A free, open-source desktop application for organizing juror notes and tracking seat assignments during jury selection.
 
+![Jury Selection Tool](Example.png)
+
 ---
 
 ## Features
