@@ -5,7 +5,7 @@ a = Analysis(
     ['jury.py'],
     pathex=[],
     binaries=[],
-    datas=[('test_populate.py', '.'), ('icon.ico', '.')],
+    datas=[('icon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
