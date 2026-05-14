@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+
+# PyInstaller build artifacts
+build/
+dist/
+
+# Compiled installer
+installer/
+
+# Generated files
+jury_report.pdf
+autosave.json
+test.json
+
+# Large media (too big for GitHub)
+*.mp4
+*.mov
