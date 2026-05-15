@@ -16,6 +16,7 @@ installer/
 # Generated files
 jury_report.pdf
 autosave.json
+autosave_*.json
 test.json
 
 # Large media (too big for GitHub)

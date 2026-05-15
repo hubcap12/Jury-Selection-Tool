@@ -48,7 +48,9 @@ DEFAULT_SETTINGS: dict = {
     "rte_underline":  False,
     "num_panels":     3,
     "autosave_interval": 15,
+    "autosave_keep":  3,
     "work_dir":       "",
+    "both_height":    100,
 }
 
 
@@ -109,9 +111,10 @@ def _init_fonts(base: int = 10) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 STATUS_DISPLAY = {
-    "excused":    "Excused",
-    "struck_def": "Def. Strike",
-    "struck_pro": "Pro. Strike",
+    "excused":     "Excused",
+    "struck_def":  "Def. Strike",
+    "struck_pro":  "Pro. Strike",
+    "struck_both": "Both Struck",
 }
 
 # ── Visual constants ──────────────────────────────────────────────────────────
@@ -999,6 +1002,8 @@ class JuryApp(tk.Tk):
             icon="warning",
             default="no",
         ):
+            if self._autosave_id is not None:
+                self.after_cancel(self._autosave_id)
             self.destroy()
 
     # ── Startup dialog ────────────────────────────────────────────────────────
@@ -1073,6 +1078,10 @@ class JuryApp(tk.Tk):
 
     def _open_settings(self):
         global SW, SH, SGAP
+        self._kill_drag_win()
+        self._drag_id = None
+        self._drag_source = None
+        self._drag_seat_info = None
 
         dlg = tk.Toplevel(self)
         dlg.title("Preferences")
@@ -1089,7 +1098,7 @@ class JuryApp(tk.Tk):
         _orig_rte_italic     = SETTINGS["rte_italic"]
         _orig_rte_underline  = SETTINGS["rte_underline"]
         _orig_zoom           = float(self._zoom_var.get())
-        _panel_keys = ("pool_height", "exc_height", "def_height", "pro_height",
+        _panel_keys = ("pool_height", "exc_height", "def_height", "pro_height", "both_height",
                        "lf_width", "fj_width", "vp_detail_height", "detail_height")
         _saved_panel_pos = [_load_settings()]  # list-box so inner functions can rebind
 
@@ -1222,9 +1231,9 @@ class JuryApp(tk.Tk):
             pages[name].pack(fill="both", expand=True)
             for n, b in tab_btns.items():
                 if n == name:
-                    b.configure(bg=C["seat_seated"], fg=C["txt_light"], relief="flat")
+                    b.configure(bg=C["seat_seated"], fg=C["txt_light"], relief="solid")
                 else:
-                    b.configure(bg=C["btn_bg"], fg=C["btn_fg"], relief="flat")
+                    b.configure(bg=C["btn_bg"], fg=C["btn_fg"], relief="solid")
             if name == "Panels":
                 dlg.grab_release()
                 dlg.attributes("-topmost", True)
@@ -1236,11 +1245,11 @@ class JuryApp(tk.Tk):
 
         for tab_name in ("Grid", "Panels", "Appearance", "Notes", "Misc"):
             _make_scroll_page(tab_name)
-            b = tk.Button(tab_bar, text=tab_name, relief="flat",
+            b = tk.Button(tab_bar, text=tab_name, relief="solid",
                           bg=C["btn_bg"], fg=C["btn_fg"],
                           activebackground=C["btn_hover"], activeforeground=C["txt_light"],
                           font=_dlg_fonts["md"], padx=14, pady=5, cursor="hand2",
-                          bd=0, highlightthickness=0,
+                          bd=1, highlightthickness=0, highlightbackground=C["divider"],
                           command=lambda n=tab_name: show_tab(n))
             b.pack(side="left", padx=(0, 2))
             tab_btns[tab_name] = b
@@ -1332,10 +1341,12 @@ class JuryApp(tk.Tk):
                 c0 = self._pane_lv.sash_coord(0)
                 c1 = self._pane_lv.sash_coord(1)
                 c2 = self._pane_lv.sash_coord(2)
+                c3 = self._pane_lv.sash_coord(3)
                 SETTINGS["pool_height"] = max(80, c0[1])
                 SETTINGS["exc_height"]  = max(40, c1[1] - c0[1] - sw)
                 SETTINGS["def_height"]  = max(40, c2[1] - c1[1] - sw)
-                SETTINGS["pro_height"]  = max(40, self._pane_lv.winfo_height() - c2[1] - sw)
+                SETTINGS["pro_height"]  = max(40, c3[1] - c2[1] - sw)
+                SETTINGS["both_height"] = max(40, self._pane_lv.winfo_height() - c3[1] - sw)
             except Exception:
                 pass
             try:
@@ -1365,7 +1376,7 @@ class JuryApp(tk.Tk):
                 text="Save Current Positions as Default", bg=C["seat_seated"]))
 
         def _reset_panel_positions():
-            for k in ("pool_height", "exc_height", "def_height", "pro_height",
+            for k in ("pool_height", "exc_height", "def_height", "pro_height", "both_height",
                       "lf_width", "fj_width", "vp_detail_height", "detail_height"):
                 SETTINGS[k] = DEFAULT_SETTINGS[k]
             _save_settings(SETTINGS)
@@ -1482,6 +1493,9 @@ class JuryApp(tk.Tk):
         v_autosave = add_spinbox(mc, "Interval", 0, 120,
                                  SETTINGS.get("autosave_interval", 15), r, "min  (0 = off)")
         r += 1
+        v_autosave_keep = add_spinbox(mc, "Keep", 1, 20,
+                                      SETTINGS.get("autosave_keep", 3), r, "files")
+        r += 1
 
         add_section(mc, "Working Directory", r); r += 2
         tk.Label(mc, text="Directory:", **lbl_kw).grid(
@@ -1522,8 +1536,9 @@ class JuryApp(tk.Tk):
         bf = tk.Frame(dlg, bg=C["bg"])
         bf.pack(fill="x", padx=10, pady=(0, 10))
 
-        _orig_autosave  = SETTINGS.get("autosave_interval", 15)
-        _orig_work_dir  = SETTINGS.get("work_dir", "")
+        _orig_autosave      = SETTINGS.get("autosave_interval", 15)
+        _orig_autosave_keep = SETTINGS.get("autosave_keep", 3)
+        _orig_work_dir      = SETTINGS.get("work_dir", "")
 
         def _on_cancel():
             _unlock_main()
@@ -1535,6 +1550,7 @@ class JuryApp(tk.Tk):
             SETTINGS["rte_italic"]          = _orig_rte_italic
             SETTINGS["rte_underline"]       = _orig_rte_underline
             SETTINGS["autosave_interval"]   = _orig_autosave
+            SETTINGS["autosave_keep"]       = _orig_autosave_keep
             SETTINGS["work_dir"]            = _orig_work_dir
             if SETTINGS["font_size"] != _orig_font_size:
                 self._rescale_fonts(_orig_font_size)  # also calls _redraw
@@ -1563,6 +1579,7 @@ class JuryApp(tk.Tk):
             v_rte_italic.set(DEFAULT_SETTINGS["rte_italic"])
             v_rte_underline.set(DEFAULT_SETTINGS["rte_underline"])
             v_autosave.set(DEFAULT_SETTINGS["autosave_interval"])
+            v_autosave_keep.set(DEFAULT_SETTINGS["autosave_keep"])
             v_work_dir.set(DEFAULT_SETTINGS["work_dir"])
 
         def _commit():
@@ -1588,6 +1605,7 @@ class JuryApp(tk.Tk):
             SETTINGS["rte_italic"]          = bool(v_rte_italic.get())
             SETTINGS["rte_underline"]       = bool(v_rte_underline.get())
             SETTINGS["autosave_interval"]   = int(v_autosave.get())
+            SETTINGS["autosave_keep"]       = int(v_autosave_keep.get())
             SETTINGS["work_dir"]            = v_work_dir.get().strip()
             self._schedule_autosave()
             SW   = SETTINGS["seat_width"]
@@ -1811,6 +1829,29 @@ class JuryApp(tk.Tk):
         self.pro_struck_lb.bind("<Button-2>",        self._dismissed_rclick)
         self.pro_struck_lb.bind("<<ListboxSelect>>", self._lb_selection_changed)
         self._pro_struck_ids: list[int] = []
+
+        # ── Both Struck pane ──────────────────────────────────────────────────
+        both_pane = tk.Frame(lv, bg=C["bg"])
+        lv.add(both_pane, minsize=50, height=SETTINGS["both_height"], stretch="never")
+        tk.Label(both_pane, text="Both Struck", font=FONTS["lg_bold"],
+                 bg=C["bg"], fg=C["danger_fg"]).pack(anchor="w", pady=(4, 2), padx=2)
+        both_box = tk.Frame(both_pane, bg=C["bg"])
+        both_box.pack(fill="both", expand=True)
+        both_sb = tk.Scrollbar(both_box)
+        both_sb.pack(side="right", fill="y")
+        self.both_struck_lb = tk.Listbox(
+            both_box, yscrollcommand=both_sb.set, font=FONTS["md"],
+            selectmode="single", activestyle="none",
+            relief="solid", bd=1, highlightthickness=0,
+            bg=C["danger_bg"], fg=C["danger_fg"],
+            selectbackground=C["seat_struck"], selectforeground=C["txt_light"],
+        )
+        self.both_struck_lb.pack(fill="both", expand=True)
+        both_sb.config(command=self.both_struck_lb.yview)
+        self.both_struck_lb.bind("<Button-3>",        self._dismissed_rclick)
+        self.both_struck_lb.bind("<Button-2>",        self._dismissed_rclick)
+        self.both_struck_lb.bind("<<ListboxSelect>>", self._lb_selection_changed)
+        self._both_struck_ids: list[int] = []
 
         # ── Final Jury panel (far right) ──────────────────────────────────────
 
@@ -2128,7 +2169,10 @@ class JuryApp(tk.Tk):
 
     @property
     def seats(self) -> dict:
-        return self.panel_seats[self._active_panel]
+        if not self.panel_seats:
+            return {}
+        idx = max(0, min(self._active_panel, len(self.panel_seats) - 1))
+        return self.panel_seats[idx]
 
     @seats.setter
     def seats(self, value: dict):
@@ -2179,7 +2223,7 @@ class JuryApp(tk.Tk):
                     j = self.jurors.get(jid)
                     if j:
                         j.seat, j.is_alt, j.panel = None, False, 0
-                        if j.status not in ("excused", "struck_def", "struck_pro"):
+                        if j.status not in ("excused", "struck_def", "struck_pro", "struck_both"):
                             j.status = "pool"
         if self._active_panel >= len(self.panel_seats):
             self._active_panel = len(self.panel_seats) - 1
@@ -2262,12 +2306,17 @@ class JuryApp(tk.Tk):
                 if jid is not None:
                     j = self.jurors.get(jid)
                     if j:
-                        j.seat, j.is_alt, j.status, j.panel = None, False, "pool", 0
+                        was_seated = j.status == "seated"
+                        j.seat, j.is_alt, j.panel = None, False, 0
+                        if was_seated:
+                            j.status = "pool"
 
             new_seats = {i: None for i in range(1, rows * cols + 1)}
             for s, jid in old_seats.items():
                 if jid and s in new_seats:
-                    j = self.jurors[jid]
+                    j = self.jurors.get(jid)
+                    if not j:
+                        continue
                     new_seats[s] = jid
                     j.seat, j.is_alt, j.status, j.panel = s, False, "seated", pi
             self.panel_seats[pi] = new_seats
@@ -2328,7 +2377,7 @@ class JuryApp(tk.Tk):
         f_empty   = max(6, int(9  * scale * fscale))
         spad      = max(3, int(7  * scale))
         js        = max(1, int(self.jury_size_var.get()))
-        fj_pos    = {jid: pos for pos, jid in enumerate(self.final_jury, 1)}
+        fj_pos    = self._fj_pos
 
         xywh: dict[int, tuple] = {}
         for r in range(rows):
@@ -2361,10 +2410,11 @@ class JuryApp(tk.Tk):
                 fill = C["seat_alt_fin"]
             else:
                 fill = {
-                    "seated":    C["seat_seated"],
-                    "excused":   C["seat_excused"],
-                    "struck_def": C["seat_struck"],
-                    "struck_pro": C["seat_struck"],
+                    "seated":      C["seat_seated"],
+                    "excused":     C["seat_excused"],
+                    "struck_def":  C["seat_struck"],
+                    "struck_pro":  C["seat_struck"],
+                    "struck_both": C["seat_struck"],
                 }.get(juror.status, C["seat_seated"])
             tc = C["txt_light"]
         else:
@@ -2438,7 +2488,7 @@ class JuryApp(tk.Tk):
     # ── Pool list ─────────────────────────────────────────────────────────────
 
     def _refresh_pool(self):
-        pool, excused, def_struck, pro_struck = [], [], [], []
+        pool, excused, def_struck, pro_struck, both_struck = [], [], [], [], []
         for j in sorted(self.jurors.values(), key=lambda j: j.id):
             s = j.status
             if s == "pool":
@@ -2449,11 +2499,14 @@ class JuryApp(tk.Tk):
                 def_struck.append(j)
             elif s == "struck_pro":
                 pro_struck.append(j)
+            elif s == "struck_both":
+                both_struck.append(j)
 
-        self._pool_ids        = [j.id for j in pool]
-        self._excused_ids     = [j.id for j in excused]
-        self._def_struck_ids  = [j.id for j in def_struck]
-        self._pro_struck_ids  = [j.id for j in pro_struck]
+        self._pool_ids         = [j.id for j in pool]
+        self._excused_ids      = [j.id for j in excused]
+        self._def_struck_ids   = [j.id for j in def_struck]
+        self._pro_struck_ids   = [j.id for j in pro_struck]
+        self._both_struck_ids  = [j.id for j in both_struck]
 
         self.pool_lb.delete(0, "end")
         if pool:
@@ -2470,6 +2523,10 @@ class JuryApp(tk.Tk):
         self.pro_struck_lb.delete(0, "end")
         if pro_struck:
             self.pro_struck_lb.insert("end", *[j.label for j in pro_struck])
+
+        self.both_struck_lb.delete(0, "end")
+        if both_struck:
+            self.both_struck_lb.insert("end", *[j.label for j in both_struck])
 
     def _refresh(self):
         self._refresh_pool()
@@ -2517,7 +2574,7 @@ class JuryApp(tk.Tk):
         else:
             self.final_jury.append(jid)
             j = self.jurors.get(jid)
-            if j and j.status in ("excused", "struck_def", "struck_pro"):
+            if j and j.status in ("excused", "struck_def", "struck_pro", "struck_both"):
                 j.status = "seated"
         self._refresh()
 
@@ -2551,6 +2608,8 @@ class JuryApp(tk.Tk):
                       command=lambda: self._dismiss_pool_juror(j.id, "struck_def"))
         m.add_command(label="Strike — Prosecution",
                       command=lambda: self._dismiss_pool_juror(j.id, "struck_pro"))
+        m.add_command(label="Strike — Both",
+                      command=lambda: self._dismiss_pool_juror(j.id, "struck_both"))
         m.add_separator()
         m.add_command(label="Edit…", command=lambda: self._edit_by_id(j.id))
         m.post(event.x_root, event.y_root)
@@ -2573,6 +2632,8 @@ class JuryApp(tk.Tk):
             id_list = self._def_struck_ids
         elif lb is self.pro_struck_lb:
             id_list = self._pro_struck_ids
+        elif lb is self.both_struck_lb:
+            id_list = self._both_struck_ids
         else:
             id_list = self._excused_ids
         if idx >= len(id_list):
@@ -2697,7 +2758,9 @@ class JuryApp(tk.Tk):
                 self._redraw()
             return
         self._save_detail(redraw=False)  # save old selection; redraw happens below
-        j = self.jurors[jid]
+        j = self.jurors.get(jid)
+        if not j:
+            return
         self._selected_jid = jid
         self._show_juror_detail(j, seat_label=f"Panel {self._active_panel + 1}  ·  Seat {num}")
         self._drag_id        = jid
@@ -2726,6 +2789,8 @@ class JuryApp(tk.Tk):
         if jid is not None:
             j = self.jurors.get(jid)
             if j:
+                if j.status == "seated":
+                    j.status = "pool"
                 j.seat, j.is_alt, j.panel = None, False, 0
             self.seats[num] = None
             if jid in self.final_jury:
@@ -2738,11 +2803,10 @@ class JuryApp(tk.Tk):
     # ── Canvas events ─────────────────────────────────────────────────────────
 
     def _cv_drop(self, event):
-        if self._drag_id is None:
-            return
-
         was_dragging = self._drag_win is not None
         self._kill_drag_win()
+        if self._drag_id is None:
+            return
 
         if self._drag_source == "seat":
             if was_dragging:
@@ -2755,6 +2819,7 @@ class JuryApp(tk.Tk):
             # Pool → canvas
             self._assign(event.x, event.y)
             self._drag_id = None
+            self._drag_seat_info = None
 
     def _handle_seat_drop(self, event):
         jid              = self._drag_id
@@ -2772,8 +2837,10 @@ class JuryApp(tk.Tk):
             dst_jid = self.seats.get(dst_num)
             if dst_jid is not None:
                 # Both seats occupied — swap them
-                src_j = self.jurors[jid]
-                dst_j = self.jurors[dst_jid]
+                src_j = self.jurors.get(jid)
+                dst_j = self.jurors.get(dst_jid)
+                if not src_j or not dst_j:
+                    return
                 self.seats[src_num] = dst_jid
                 self.seats[dst_num] = jid
                 src_j.seat, src_j.panel = dst_num, self._active_panel
@@ -3007,6 +3074,8 @@ class JuryApp(tk.Tk):
             j = self.jurors.get(self._def_struck_ids[idx]) if idx < len(self._def_struck_ids) else None
         elif lb is self.pro_struck_lb:
             j = self.jurors.get(self._pro_struck_ids[idx]) if idx < len(self._pro_struck_ids) else None
+        elif lb is self.both_struck_lb:
+            j = self.jurors.get(self._both_struck_ids[idx]) if idx < len(self._both_struck_ids) else None
         else:
             return
         if j:
@@ -3022,8 +3091,10 @@ class JuryApp(tk.Tk):
         jid = self.seats.get(num)
         if jid is None:
             return
-        j = self.jurors[jid]
-        in_final = jid in self._fj_pos
+        j = self.jurors.get(jid)
+        if not j:
+            return
+        in_final = jid in self.final_jury
 
         rating_sym = ("▲" * j.rating if j.rating > 0
                       else "▼" * abs(j.rating) if j.rating < 0 else "")
@@ -3038,7 +3109,7 @@ class JuryApp(tk.Tk):
             label="Remove from Final Jury" if in_final else "Add to Final Jury",
             command=lambda: self._toggle_final(jid),
         )
-        dismissed = j.status in ("excused", "struck_def", "struck_pro")
+        dismissed = j.status in ("excused", "struck_def", "struck_pro", "struck_both")
         m.add_separator()
         if dismissed:
             m.add_command(label="Return to Seat",
@@ -3055,6 +3126,9 @@ class JuryApp(tk.Tk):
         m.add_command(label="Strike — Prosecution",
                       state="disabled" if j.status == "struck_pro" else "normal",
                       command=lambda: self._set_status(jid, "struck_pro"))
+        m.add_command(label="Strike — Both",
+                      state="disabled" if j.status == "struck_both" else "normal",
+                      command=lambda: self._set_status(jid, "struck_both"))
         m.add_separator()
         m.add_command(label="Edit Notes…",
                       command=lambda: self._edit_by_id(jid))
@@ -3102,10 +3176,12 @@ class JuryApp(tk.Tk):
             oj = self.jurors.get(old_jid)
             if oj:
                 oj.seat, oj.is_alt = None, False
-                if oj.status not in ("excused", "struck_def", "struck_pro", "struck"):
+                if oj.status not in ("excused", "struck_def", "struck_pro", "struck_both"):
                     oj.status = "pool"
 
-        j              = self.jurors[self._drag_id]
+        j = self.jurors.get(self._drag_id)
+        if not j:
+            return
         self.seats[num] = self._drag_id
         j.seat, j.is_alt, j.status, j.panel = num, False, "seated", self._active_panel
         self.status.set(f"Seated {j.name} in seat {num}.")
@@ -3284,6 +3360,10 @@ class JuryApp(tk.Tk):
             "Reset to default?\n\nAll unsaved data will be permanently lost.",
             icon="warning",
         ):
+            self._kill_drag_win()
+            self._drag_id = None
+            self._drag_source = None
+            self._drag_seat_info = None
             self.jurors.clear()
             Juror._next = 1
             self._selected_jid = None
@@ -3374,11 +3454,12 @@ class JuryApp(tk.Tk):
 
         def status_of(j, jid):
             fp = self._fj_pos.get(jid, 0)
-            if fp and fp <= js:      return f"Final Juror #{fp}",    GREEN
-            if fp:                   return f"Alternate #{fp - js}", AGREEN
-            if j.status == "excused":    return "Excused",            GREY
-            if j.status == "struck_def": return "Defense Strike",     RED
-            if j.status == "struck_pro": return "Prosecution Strike", RED
+            if fp and fp <= js:       return f"Final Juror #{fp}",    GREEN
+            if fp:                    return f"Alternate #{fp - js}", AGREEN
+            if j.status == "excused":     return "Excused",            GREY
+            if j.status == "struck_def":  return "Defense Strike",     RED
+            if j.status == "struck_pro":  return "Prosecution Strike", RED
+            if j.status == "struck_both": return "Both Strike",        RED
             return "Seated", BLUE
 
         W  = 6.5 * inch
@@ -3417,7 +3498,7 @@ class JuryApp(tk.Tk):
             return KeepTogether([t, Spacer(1, 6)])
 
         # ── Collect summary data ─────────────────────────────────────────────
-        fj, alt, exc, sdef, spro, pool = [], [], [], [], [], []
+        fj, alt, exc, sdef, spro, sboth, pool = [], [], [], [], [], [], []
         for pos, jid in enumerate(self.final_jury, 1):
             j = self.jurors.get(jid)
             if not j:
@@ -3437,9 +3518,10 @@ class JuryApp(tk.Tk):
             else:
                 loc = "unseated"
             line = f"{esc(j.name)}  (Juror #{j.id}, {loc})"
-            if j.status == "excused":      exc.append(line)
-            elif j.status == "struck_def": sdef.append(line)
-            elif j.status == "struck_pro": spro.append(line)
+            if j.status == "excused":        exc.append(line)
+            elif j.status == "struck_def":   sdef.append(line)
+            elif j.status == "struck_pro":   spro.append(line)
+            elif j.status == "struck_both":  sboth.append(line)
             elif j.status == "pool":
                 pool.append(f"{esc(j.name)}  (Juror #{j.id})")
 
@@ -3470,6 +3552,7 @@ class JuryApp(tk.Tk):
         summ("Excused",            exc,  GREY)
         summ("Defense Struck",     sdef, RED)
         summ("Prosecution Struck", spro, RED)
+        summ("Both Struck",        sboth, RED)
         summ("Preliminary Pool",   pool, BLUE)
 
         # Page 2+ — seat-by-seat details by panel
@@ -3512,11 +3595,13 @@ class JuryApp(tk.Tk):
                 exc_h  = snap["exc_height"]
                 def_h  = snap["def_height"]
                 pro_h  = snap["pro_height"]
+                both_h = snap.get("both_height", DEFAULT_SETTINGS["both_height"])
                 total  = self._pane_lv.winfo_height()
-                y0     = max(80, total - exc_h - def_h - pro_h - 3 * sw)
+                y0     = max(80, total - exc_h - def_h - pro_h - both_h - 4 * sw)
                 self._pane_lv.sash_place(0, 0, y0)
                 self._pane_lv.sash_place(1, 0, y0 + sw + exc_h)
                 self._pane_lv.sash_place(2, 0, y0 + sw + exc_h + sw + def_h)
+                self._pane_lv.sash_place(3, 0, y0 + sw + exc_h + sw + def_h + sw + pro_h)
             except Exception:
                 pass
             try:
@@ -3579,7 +3664,7 @@ class JuryApp(tk.Tk):
                     rte_underline=SETTINGS["rte_underline"],
                     window_geometry=self.geometry(),
                     sash_outer=self._sash_coords(self._pane_outer, 2),
-                    sash_lv=self._sash_coords(self._pane_lv, 3),
+                    sash_lv=self._sash_coords(self._pane_lv, 4),
                     sash_vp=self._sash_coords(self._pane_vp, 1),
                     sash_fj=self._sash_coords(self._pane_fj, 1))
 
@@ -3594,11 +3679,22 @@ class JuryApp(tk.Tk):
     def _autosave(self):
         self._autosave_id = None
         if self.jurors:
-            path = os.path.join(self._work_dir(), "autosave.json")
+            d    = self._work_dir()
+            keep = max(1, SETTINGS.get("autosave_keep", 3))
             try:
+                # Delete the oldest slot if it exists, then shift 2→3, 1→2, …
+                oldest = os.path.join(d, f"autosave_{keep}.json")
+                if os.path.exists(oldest):
+                    os.remove(oldest)
+                for i in range(keep - 1, 0, -1):
+                    src = os.path.join(d, f"autosave_{i}.json")
+                    dst = os.path.join(d, f"autosave_{i + 1}.json")
+                    if os.path.exists(src):
+                        os.replace(src, dst)
+                path = os.path.join(d, "autosave_1.json")
                 with open(path, "w") as f:
                     json.dump(self._build_save_data(), f, indent=2)
-                self.status.set(f"Autosaved → {os.path.basename(path)}")
+                self.status.set(f"Autosaved → autosave_1.json")
             except OSError:
                 pass
         self._schedule_autosave()
@@ -3612,8 +3708,12 @@ class JuryApp(tk.Tk):
         )
         if not path:
             return
-        with open(path, "w") as f:
-            json.dump(self._build_save_data(), f, indent=2)
+        try:
+            with open(path, "w") as f:
+                json.dump(self._build_save_data(), f, indent=2)
+        except OSError as e:
+            messagebox.showerror("Save Failed", f"Could not write file:\n{e}")
+            return
         self.status.set(f"Saved → {os.path.basename(path)}")
 
     def _open(self):
@@ -3623,8 +3723,15 @@ class JuryApp(tk.Tk):
         )
         if not path:
             return
-        with open(path) as f:
-            data = json.load(f)
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            messagebox.showerror("Open Failed", f"Could not read file:\n{e}")
+            return
+        if not isinstance(data, dict):
+            messagebox.showerror("Open Failed", "File does not contain valid jury data.")
+            return
 
         self._selected_jid = None
         self._clear_detail()
@@ -3683,13 +3790,12 @@ class JuryApp(tk.Tk):
         if "rte_underline" in data:
             SETTINGS["rte_underline"] = bool(data["rte_underline"])
 
-        self._refresh()
-
         if "theme" in data:
             self._apply_theme(data["theme"])
         if "zoom" in data:
             self._zoom_var.set(data["zoom"])
-            self._redraw()
+
+        self._refresh()
         if "window_geometry" in data:
             try:
                 self.geometry(data["window_geometry"])
