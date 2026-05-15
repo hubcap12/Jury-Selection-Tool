@@ -10,7 +10,7 @@ A free, open-source desktop application for organizing juror notes and tracking 
 
 - **Drag-and-drop seating** — click to assign jurors to seats on a configurable grid
 - **Multi-panel support** — manage multiple independent jury panels (e.g., Panel 1, Panel 2, Panel 3)
-- **Juror notes** — rich-text notes per juror with excusals and strike-pro/defense tracking
+- **Juror notes** — rich-text notes per juror with excusals and strike (pro/defense/both) tracking
 - **Final jury tracker** — mark seated jurors as final jury members
 - **PDF export** — generate a formatted report of all panels and juror details
 - **Autosave** — automatically saves your work at a configurable interval
