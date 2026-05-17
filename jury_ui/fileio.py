@@ -132,13 +132,37 @@ def load_state(api, path: str) -> None:
 
 # ── CSV import ────────────────────────────────────────────────────────────────
 
+_DOB_HEADERS = {"dob", "date of birth", "birthdate", "birth date", "born",
+                "birth", "date_of_birth", "dateofbirth"}
+_DOB_FORMATS = ("%m/%d/%Y", "%Y-%m-%d", "%d/%m/%Y", "%m-%d-%Y",
+                "%m/%d/%y", "%d-%m-%Y", "%B %d, %Y", "%b %d, %Y")
+
+
+def _age_from_dob(dob_str: str) -> int:
+    """Return current age in whole years from a date-of-birth string."""
+    from datetime import date, datetime
+    dob_str = dob_str.strip()
+    if not dob_str:
+        return 0
+    for fmt in _DOB_FORMATS:
+        try:
+            dob = datetime.strptime(dob_str, fmt).date()
+            today = date.today()
+            return max(0, today.year - dob.year
+                       - ((today.month, today.day) < (dob.month, dob.day)))
+        except ValueError:
+            continue
+    return 0
+
+
 def import_csv(api, path: str) -> int:
     """Append jurors from a CSV file to the pool.  Returns the count added.
 
     Accepted column orderings (auto-detected from header row, if any):
-      • ``name``                    — name only
-      • ``name, age``               — name + age
-      • ``name, age, keywords``     — name + age + keywords
+      • ``name``                         — name only
+      • ``name, age``                    — name + age (integer)
+      • ``name, dob``                    — name + date of birth (calculated)
+      • ``name, age, keywords``
       • ``name, age, keywords, notes``
     Lines starting with ``#`` are ignored as comments.
     """
@@ -149,9 +173,10 @@ def import_csv(api, path: str) -> int:
     if not rows:
         return 0
 
-    # Detect header.
+    # Detect header and column roles.
     first = [c.strip().lower() for c in rows[0]]
     has_header = first and first[0] in ("name", "juror", "full name", "first")
+    col2_is_dob = has_header and len(first) > 1 and first[1] in _DOB_HEADERS
     body = rows[1:] if has_header else rows
 
     for row in body:
@@ -160,7 +185,8 @@ def import_csv(api, path: str) -> int:
         name = row[0].strip()
         if not name:
             continue
-        age      = row[1].strip() if len(row) > 1 else ""
+        raw2     = row[1].strip() if len(row) > 1 else ""
+        age      = str(_age_from_dob(raw2)) if col2_is_dob else raw2
         keywords = row[2].strip() if len(row) > 2 else ""
         notes    = row[3].strip() if len(row) > 3 else ""
         api.add_juror(name=name, age=age, notes=notes, keywords=keywords)
