@@ -10,6 +10,7 @@ trivial and idempotent.
 """
 from __future__ import annotations
 
+import os
 from typing import Any
 
 
@@ -26,11 +27,18 @@ class JuryAPI:
         self.selected_final: int | None = None
         self.theme: str = "dark"
         self._window = None
+        self._last_save_path: str | None = None
+        self._work_dir: str = os.path.expanduser("~")
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
     def _bind_window(self, window) -> None:
         self._window = window
+
+    def set_work_dir(self, path: str) -> None:
+        """Set the directory used for file dialogs and autosave snapshots."""
+        if path and os.path.isdir(path):
+            self._work_dir = path
 
     # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -63,6 +71,7 @@ class JuryAPI:
             "selected_seat":  self.selected_seat,
             "selected_final": self.selected_final,
             "theme":          self.theme,
+            "last_save_path": self._last_save_path,
         }
 
     def set_active_panel(self, n: int) -> bool:
@@ -306,13 +315,99 @@ class JuryAPI:
         if self._window is not None:
             self._window.destroy()
 
-    # ── Stage 3 stubs ─────────────────────────────────────────────────────
+    # ── File menu ────────────────────────────────────────────────────────
 
-    def open_file(self) -> dict[str, str]:
-        return {"ok": False, "msg": "Open — wiring up in Stage 3"}
+    def open_file(self) -> dict[str, Any]:
+        from .fileio import load_state
+        path = self._file_dialog(
+            save=False,
+            file_types=("JSON files (*.json)", "All files (*.*)"),
+        )
+        if not path:
+            return {"ok": False, "msg": "Cancelled"}
+        try:
+            load_state(self, path)
+        except (OSError, ValueError) as e:
+            return {"ok": False, "msg": f"Could not read file: {e}"}
+        self._last_save_path = path
+        return {"ok": True, "msg": f"Opened {os.path.basename(path)}",
+                "state": self.get_state()}
 
-    def save(self) -> dict[str, str]:
-        return {"ok": False, "msg": "Save — wiring up in Stage 3"}
+    def save(self, save_as: bool = False) -> dict[str, Any]:
+        from .fileio import save_state
+        path = self._last_save_path if (not save_as and self._last_save_path) else None
+        if path is None:
+            path = self._file_dialog(
+                save=True,
+                default_name="jury.json",
+                file_types=("JSON files (*.json)", "All files (*.*)"),
+            )
+        if not path:
+            return {"ok": False, "msg": "Cancelled"}
+        try:
+            save_state(self, path)
+        except OSError as e:
+            return {"ok": False, "msg": f"Could not write file: {e}"}
+        self._last_save_path = path
+        return {"ok": True, "msg": f"Saved → {os.path.basename(path)}",
+                "state": self.get_state()}
 
-    def export_pdf(self) -> dict[str, str]:
-        return {"ok": False, "msg": "Export PDF — wiring up in Stage 3"}
+    def save_as(self) -> dict[str, Any]:
+        return self.save(save_as=True)
+
+    def upload_csv(self) -> dict[str, Any]:
+        from .fileio import import_csv
+        path = self._file_dialog(
+            save=False,
+            file_types=("CSV files (*.csv)", "All files (*.*)"),
+        )
+        if not path:
+            return {"ok": False, "msg": "Cancelled"}
+        try:
+            added = import_csv(self, path)
+        except (OSError, ValueError) as e:
+            return {"ok": False, "msg": f"Could not import CSV: {e}"}
+        return {"ok": True,
+                "msg": f"Imported {added} juror{'s' if added != 1 else ''} from {os.path.basename(path)}",
+                "state": self.get_state()}
+
+    def export_pdf(self, title: str = "Jury Selection Report") -> dict[str, Any]:
+        from . import pdf as _pdf
+        path = self._file_dialog(
+            save=True,
+            default_name="jury_report.pdf",
+            file_types=("PDF files (*.pdf)", "All files (*.*)"),
+        )
+        if not path:
+            return {"ok": False, "msg": "Cancelled"}
+        try:
+            _pdf.export(self, path, title or "Jury Selection Report")
+        except ImportError:
+            return {"ok": False, "msg":
+                    "PDF export needs the 'reportlab' package. "
+                    "Install with: pip install reportlab, then restart."}
+        except Exception as e:
+            return {"ok": False, "msg": f"PDF export failed: {e}"}
+        return {"ok": True, "msg": f"Exported PDF → {os.path.basename(path)}"}
+
+    def _file_dialog(self, *, save: bool, default_name: str = "",
+                     file_types: tuple[str, ...] = ()) -> str | None:
+        """Open a pywebview file dialog; return the chosen path or None."""
+        if self._window is None:
+            return None
+        import webview as pywebview
+        kind = pywebview.SAVE_DIALOG if save else pywebview.OPEN_DIALOG
+        kw: dict[str, Any] = {"directory": self._work_dir}
+        if save and default_name:
+            kw["save_filename"] = default_name
+        if file_types:
+            kw["file_types"] = file_types
+        result = self._window.create_file_dialog(kind, **kw)
+        if not result:
+            return None
+        path = result if isinstance(result, str) else result[0]
+        try:
+            self._work_dir = os.path.dirname(path) or self._work_dir
+        except Exception:
+            pass
+        return path

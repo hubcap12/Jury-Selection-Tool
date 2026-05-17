@@ -96,4 +96,35 @@ function ConfirmModal({ title, message, confirmLabel = "Confirm", danger, onConf
   );
 }
 
-Object.assign(window, { Modal, JurorFormModal, ConfirmModal });
+function PromptModal({ title, message, defaultValue = "", confirmLabel = "OK",
+                      placeholder = "", onConfirm, onClose }) {
+  const [value, setValue] = React.useState(defaultValue);
+  const inputRef = React.useRef(null);
+  React.useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
+  const submit = () => { onConfirm(value); onClose(); };
+  return (
+    <Modal
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn btn-default" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={submit}>{confirmLabel}</button>
+        </>
+      }
+    >
+      {message && <p className="modal-msg">{message}</p>}
+      <input
+        ref={inputRef}
+        className="input"
+        style={{ marginTop: 10 }}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+      />
+    </Modal>
+  );
+}
+
+Object.assign(window, { Modal, JurorFormModal, ConfirmModal, PromptModal });

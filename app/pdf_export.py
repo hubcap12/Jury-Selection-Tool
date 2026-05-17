@@ -1,4 +1,15 @@
-"""Standalone PDF export — all app state is passed in as arguments."""
+"""Standalone PDF export.
+
+``export_pdf(parent, …)``  is the Tk-facing entry point — asks for the
+report title and save path via Tk dialogs, then renders.
+
+``_render_pdf(path, title, …)`` is the pure renderer — no Tk, no I/O
+dialogs — used by the webview UI (``jury_ui``) which gathers ``title``
+and ``path`` through its own modals + pywebview's file dialog.
+
+Both call the same rendering core, so output is identical between the
+Tk and webview front-ends.
+"""
 from __future__ import annotations
 import html
 from datetime import datetime
@@ -9,6 +20,8 @@ import tkinter as tk
 from .config import SETTINGS
 from .richtext import _notes_to_rl_markup
 
+
+# ── Public Tk-facing wrapper ─────────────────────────────────────────────────
 
 def export_pdf(
     parent:      tk.Tk,
@@ -21,16 +34,11 @@ def export_pdf(
     fj_pos:      dict,
     work_dir:    str,
 ) -> None:
+    """Ask for title + path via Tk, then render."""
     try:
-        from reportlab.lib.pagesizes import letter, A4, legal
-        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-        from reportlab.lib.units import inch
-        from reportlab.lib import colors
-        from reportlab.platypus import (
-            SimpleDocTemplate, Paragraph, Spacer, PageBreak,
-            Table, TableStyle, HRFlowable, KeepTogether,
-        )
-        from reportlab.lib.enums import TA_CENTER
+        # Probe reportlab early so we can show the install hint dialog
+        # before bothering the user with the title/path prompts.
+        import reportlab  # noqa: F401
     except ImportError:
         messagebox.showerror(
             "Missing Library",
@@ -38,15 +46,6 @@ def export_pdf(
             "Install it with:  pip install reportlab\n\nThen restart.",
         )
         return
-
-    _ps_map  = {"Letter": letter, "A4": A4, "Legal": legal}
-    pagesize = _ps_map.get(SETTINGS.get("pdf_page_size", "Letter"), letter)
-    margin   = SETTINGS.get("pdf_margin", 0.75) * inch
-    _pdf_fnt = SETTINGS.get("pdf_font", "Helvetica")
-    fn_reg   = {"Helvetica": "Helvetica",      "Times": "Times-Roman",
-                "Courier": "Courier"}[_pdf_fnt]
-    fn_bold  = {"Helvetica": "Helvetica-Bold", "Times": "Times-Bold",
-                "Courier": "Courier-Bold"}[_pdf_fnt]
 
     report_title = askstring(
         "Report Title",
@@ -67,8 +66,59 @@ def export_pdf(
     if not path:
         return
 
+    try:
+        _render_pdf(path, report_title,
+                    rows_n, cols_n, jury_size,
+                    jurors, panel_seats, final_jury, fj_pos)
+    except Exception as e:
+        messagebox.showerror("Export Failed", f"Could not write PDF:\n{e}")
+        return
+
+    messagebox.showinfo("Exported", f"PDF saved to:\n{path}")
+
+
+# ── Pure renderer ─────────────────────────────────────────────────────────────
+
+def _render_pdf(
+    path:        str,
+    title:       str,
+    rows_n:      int,
+    cols_n:      int,
+    jury_size:   int,
+    jurors:      dict,
+    panel_seats: list,
+    final_jury:  list,
+    fj_pos:      dict,
+) -> None:
+    """Render the PDF to ``path`` with ``title``.
+
+    Raises ``ImportError`` if reportlab is missing, or whatever
+    SimpleDocTemplate.build raises if writing fails.  No Tk, no
+    file-dialogs, no message boxes — caller surfaces all messaging.
+    """
+    from reportlab.lib.pagesizes import letter, A4, legal
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, PageBreak,
+        Table, TableStyle, HRFlowable, KeepTogether,
+    )
+    from reportlab.lib.enums import TA_CENTER
+
+    _ps_map  = {"Letter": letter, "A4": A4, "Legal": legal}
+    pagesize = _ps_map.get(SETTINGS.get("pdf_page_size", "Letter"), letter)
+    margin   = SETTINGS.get("pdf_margin", 0.75) * inch
+    _pdf_fnt = SETTINGS.get("pdf_font", "Helvetica")
+    fn_reg   = {"Helvetica": "Helvetica",      "Times": "Times-Roman",
+                "Courier": "Courier"}[_pdf_fnt]
+    fn_bold  = {"Helvetica": "Helvetica-Bold", "Times": "Times-Bold",
+                "Courier": "Courier-Bold"}[_pdf_fnt]
+
     rows_n = max(1, rows_n)
     cols_n = max(1, cols_n)
+
+    report_title = title.strip() or "Jury Selection Report"
 
     # ── PDF colours ───────────────────────────────────────────────────────────
     BLUE   = colors.HexColor("#2d6dce")
@@ -228,16 +278,10 @@ def export_pdf(
                 story.append(Spacer(1, 4))
         story.append(Spacer(1, 8))
 
-    try:
-        doc = SimpleDocTemplate(
-            path, pagesize=pagesize,
-            leftMargin=margin, rightMargin=margin,
-            topMargin=margin, bottomMargin=margin,
-            title=report_title,
-        )
-        doc.build(story)
-    except Exception as e:
-        messagebox.showerror("Export Failed", f"Could not write PDF:\n{e}")
-        return
-
-    messagebox.showinfo("Exported", f"PDF saved to:\n{path}")
+    doc = SimpleDocTemplate(
+        path, pagesize=pagesize,
+        leftMargin=margin, rightMargin=margin,
+        topMargin=margin, bottomMargin=margin,
+        title=report_title,
+    )
+    doc.build(story)

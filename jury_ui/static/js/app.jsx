@@ -102,8 +102,15 @@ function JuryApp() {
     if (!r) return;
     if (r.state) {
       setJurors(r.state.jurors || []);
+      if (r.state.grid) {
+        setRows(r.state.grid.rows || 4);
+        setCols(r.state.grid.cols || 7);
+        setJurySize(r.state.grid.jury_size || r.state.grid.jurySize || 12);
+        if (r.state.grid.corner) setCorner(r.state.grid.corner);
+      }
+      if (r.state.active_panel) setActivePanel(r.state.active_panel);
     }
-    if (r.ok === false && r.msg) showToast(r.msg);
+    if (r.msg) showToast(r.msg);
   };
 
   const handleSelectSeat = (seatNo) => {
@@ -186,9 +193,19 @@ function JuryApp() {
         setModal({ kind: "confirmReset" });
         return;
       case "Save":
+        applyResult(await pyCall("save"));
+        return;
+      case "Save As":
+        applyResult(await pyCall("save_as"));
+        return;
+      case "Open":
+        applyResult(await pyCall("open_file"));
+        return;
       case "Upload CSV":
+        applyResult(await pyCall("upload_csv"));
+        return;
       case "Export PDF":
-        showToast(kind + " — Stage 3");
+        setModal({ kind: "promptPdfTitle" });
         return;
       default:
         showToast(kind);
@@ -226,14 +243,14 @@ function JuryApp() {
 
       <MenuBar onCommand={(cmd) => {
         const handlers = {
-          new:        () => showToast("New jury — Stage 2"),
-          open:       () => pyCall("open_file").then(r => showToast(r?.msg || "Open — Stage 2")),
-          save:       () => pyCall("save").then(r => showToast(r?.msg || "Save — Stage 2")),
-          save_as:    () => showToast("Save As — Stage 2"),
-          export_pdf: () => pyCall("export_pdf").then(r => showToast(r?.msg || "PDF — Stage 2")),
-          upload_csv: () => showToast("Upload CSV — Stage 2"),
+          new:        () => setModal({ kind: "confirmReset" }),
+          open:       () => handleAction("Open"),
+          save:       () => handleAction("Save"),
+          save_as:    () => handleAction("Save As"),
+          export_pdf: () => handleAction("Export PDF"),
+          upload_csv: () => handleAction("Upload CSV"),
           settings:   () => showToast("Settings dialog — Stage 4"),
-          about:      () => showToast("Jury Selection Tool · Stage 1 preview"),
+          about:      () => showToast("Jury Selection Tool · Stage 3 preview"),
           exit:       () => pyCall("exit_app"),
         };
         (handlers[cmd] || (() => {}))();
@@ -347,6 +364,19 @@ function JuryApp() {
             setSelectedSeat(null);
             setSelectedJid(null);
             showToast("Cleared all jurors");
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "promptPdfTitle" && (
+        <PromptModal
+          title="Export PDF"
+          message="Report title:"
+          defaultValue="Jury Selection Report"
+          confirmLabel="Export…"
+          placeholder="Jury Selection Report"
+          onConfirm={async (val) => {
+            applyResult(await pyCall("export_pdf", val));
           }}
           onClose={() => setModal(null)}
         />
