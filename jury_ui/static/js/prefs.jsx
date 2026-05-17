@@ -23,7 +23,7 @@ function PrefsRow({ label, hint, children }) {
   );
 }
 
-function PreferencesModal({ initial, onSave, onClose, onPickWorkDir }) {
+function PreferencesModal({ initial, onSave, onClose, onPickWorkDir, onSaveLayout }) {
   // ``initial`` is the full response from get_settings():
   //   { values: {...}, page_sizes, pdf_fonts, rte_fonts, corners }
   const [v, setV] = React.useState(initial.values);
@@ -122,6 +122,14 @@ function PreferencesModal({ initial, onSave, onClose, onPickWorkDir }) {
             <input type="checkbox" className="prefs-check"
                    checked={!!v.pdf_hide_empty}
                    onChange={(e) => set("pdf_hide_empty")(e.target.checked)} />
+          </PrefsRow>
+        </PrefsSection>
+
+        <PrefsSection title="Layout">
+          <PrefsRow label="Sidebar widths" hint="left & right column widths">
+            <button className="btn btn-default" onClick={onSaveLayout}>
+              Save current as default
+            </button>
           </PrefsRow>
         </PrefsSection>
 

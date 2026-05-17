@@ -39,6 +39,8 @@ DEFAULT_SETTINGS: dict = {
     "pdf_font":         "Helvetica",
     "pdf_filename":     "jury_report.pdf",
     "work_dir":         "",
+    "left_col_width":   280,
+    "right_col_width":  280,
     "both_height":      100,
     "dark_colors":      {},
     "light_colors":     {},

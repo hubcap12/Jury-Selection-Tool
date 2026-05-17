@@ -68,15 +68,28 @@ class JuryAPI:
     # ── State ──────────────────────────────────────────────────────────────
 
     def get_state(self) -> dict[str, Any]:
+        from app.config import SETTINGS
         return {
-            "jurors":         self.jurors,
-            "grid":           self.grid,
-            "active_panel":   self.active_panel,
-            "selected_seat":  self.selected_seat,
-            "selected_final": self.selected_final,
-            "theme":          self.theme,
-            "last_save_path": self._last_save_path,
+            "jurors":          self.jurors,
+            "grid":            self.grid,
+            "active_panel":    self.active_panel,
+            "num_panels":      int(SETTINGS.get("num_panels", 3)),
+            "left_col_width":  int(SETTINGS.get("left_col_width", 280)),
+            "right_col_width": int(SETTINGS.get("right_col_width", 280)),
+            "selected_seat":   self.selected_seat,
+            "selected_final":  self.selected_final,
+            "theme":           self.theme,
+            "last_save_path":  self._last_save_path,
         }
+
+    def save_layout(self, left_width: int, right_width: int) -> dict[str, Any]:
+        """Persist current sidebar widths as the startup default."""
+        from app.config import SETTINGS
+        from jury_ui.settings import _persist
+        SETTINGS["left_col_width"]  = max(160, int(left_width))
+        SETTINGS["right_col_width"] = max(160, int(right_width))
+        _persist()
+        return {"ok": True}
 
     def set_active_panel(self, n: int) -> bool:
         self.active_panel = int(n)

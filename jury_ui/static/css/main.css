@@ -521,6 +521,7 @@ input, select, textarea { font: inherit; color: inherit; }
   font-weight: 500;
 }
 .panel-tab:hover { color: var(--txt); background: var(--line); }
+.panel-tabs-compact .panel-tab { padding: 0 9px; min-width: 28px; text-align: center; }
 .panel-tab.is-active {
   background: var(--accent);
   color: white;
@@ -858,7 +859,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .detail-dimmed {
-  opacity: 0.28;
+  opacity: 0;
   pointer-events: none;
   user-select: none;
 }

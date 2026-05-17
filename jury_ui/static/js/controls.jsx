@@ -48,8 +48,9 @@ function StartCorner({ value, onChange }) {
 }
 
 function PanelTabs({ active, onChange, count = 3 }) {
+  const compact = count >= 5;
   return (
-    <div className="panel-tabs" role="tablist">
+    <div className={"panel-tabs" + (compact ? " panel-tabs-compact" : "")} role="tablist">
       {Array.from({ length: count }).map((_, i) => {
         const n = i + 1;
         const isActive = active === n;
@@ -58,10 +59,11 @@ function PanelTabs({ active, onChange, count = 3 }) {
             key={n}
             role="tab"
             aria-selected={isActive}
+            title={`Panel ${n}`}
             className={"panel-tab" + (isActive ? " is-active" : "")}
             onClick={() => onChange(n)}
           >
-            Panel {n}
+            {compact ? n : `Panel ${n}`}
           </button>
         );
       })}
@@ -95,7 +97,7 @@ function ThemeToggle({ theme, onChange }) {
 function ControlBar({
   rows, cols, jurySize, corner,
   setRows, setCols, setJurySize, setCorner,
-  activePanel, setActivePanel,
+  activePanel, setActivePanel, numPanels,
   theme, setTheme,
 }) {
   return (
@@ -111,7 +113,7 @@ function ControlBar({
         </div>
 
         <div className="control-group control-group-right">
-          <PanelTabs active={activePanel} onChange={setActivePanel}/>
+          <PanelTabs active={activePanel} onChange={setActivePanel} count={numPanels}/>
           <div className="control-spacer"></div>
           <ThemeToggle theme={theme} onChange={setTheme}/>
         </div>
@@ -220,7 +222,7 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
 
 /* -------------------------------------------------------------------------- */
 
-function StatusBar({ jurors, activePanel, selectedJid }) {
+function StatusBar({ jurors, activePanel, numPanels, selectedJid }) {
   const seatedCt = jurors.filter(j => j.status === "seated" && j.panel === activePanel).length;
   const finalCt  = jurors.filter(j => j.status === "final").length;
   const poolCt   = jurors.filter(j => j.status === "pool").length;
@@ -234,8 +236,8 @@ function StatusBar({ jurors, activePanel, selectedJid }) {
       <span className="status-cell"><span className="status-dot d-final"></span>Final Jury {finalCt}</span>
       <span className="status-spacer"></span>
       <span className="status-cell status-cell-muted">Autosave on · every 15 min</span>
-      <span className="status-cell status-cell-muted">Panel {activePanel} of 3</span>
-      <span className="status-cell status-cell-muted">v2.0.0 · PolyForm Noncommercial</span>
+      <span className="status-cell status-cell-muted">Panel {activePanel} of {numPanels}</span>
+      <span className="status-cell status-cell-muted">v2.0.1 · PolyForm Noncommercial</span>
     </footer>
   );
 }

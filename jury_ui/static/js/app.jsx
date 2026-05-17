@@ -69,6 +69,7 @@ function JuryApp() {
   const [jurySize, setJurySize]            = React.useState(12);
   const [corner, setCorner]                = React.useState("TL");
   const [activePanel, setActivePanel]      = React.useState(1);
+  const [numPanels, setNumPanels]          = React.useState(3);
   const [selectedSeat, setSelectedSeat]    = React.useState(null);
   const [selectedJid, setSelectedJid]      = React.useState(null);
   const [selectedFinal, setSelectedFinal]  = React.useState(null);
@@ -89,7 +90,10 @@ function JuryApp() {
         setJurySize(s.grid.jurySize || s.grid.jury_size || 12);
         if (s.grid.corner) setCorner(s.grid.corner);
       }
-      if (s.active_panel) setActivePanel(s.active_panel);
+      if (s.active_panel)    setActivePanel(s.active_panel);
+      if (s.num_panels)      setNumPanels(s.num_panels);
+      if (s.left_col_width)  setLeftWidth(s.left_col_width);
+      if (s.right_col_width) setRightWidth(s.right_col_width);
       if (s.selected_seat) setSelectedSeat(s.selected_seat);
       if (s.selected_final) setSelectedFinal(s.selected_final);
     });
@@ -340,6 +344,7 @@ function JuryApp() {
             setJurySize={(v) => { setJurySize(v); pyCall("set_grid", rows, cols, v, corner); }}
             setCorner={(v) => { setCorner(v); pyCall("set_grid", rows, cols, jurySize, v); }}
             activePanel={activePanel} setActivePanel={handleSetPanel}
+            numPanels={numPanels}
             theme={t.theme} setTheme={v => setTweak("theme", v)}
           />
 
@@ -378,7 +383,7 @@ function JuryApp() {
         />
       </div>
 
-      <StatusBar jurors={jurors} activePanel={activePanel} selectedJid={selectedJuror?.id}/>
+      <StatusBar jurors={jurors} activePanel={activePanel} numPanels={numPanels} selectedJid={selectedJuror?.id}/>
 
       <TweaksUI t={t} setTweak={setTweak}/>
 
@@ -463,11 +468,23 @@ function JuryApp() {
           initial={modal.initial}
           onSave={async (values) => {
             const r = await pyCall("update_settings", values);
-            if (r?.ok) showToast("Preferences saved");
-            else showToast(r?.msg || "Failed to save preferences");
+            if (r?.ok) {
+              showToast("Preferences saved");
+              if (r.values?.num_panels != null) {
+                const n = r.values.num_panels;
+                setNumPanels(n);
+                if (activePanel > n) setActivePanel(1);
+              }
+            } else {
+              showToast(r?.msg || "Failed to save preferences");
+            }
             setModal(null);
           }}
           onPickWorkDir={() => pyCall("pick_work_dir")}
+          onSaveLayout={async () => {
+            const r = await pyCall("save_layout", leftWidth, rightWidth);
+            if (r?.ok) showToast("Sidebar widths saved as default");
+          }}
           onClose={() => setModal(null)}
         />
       )}

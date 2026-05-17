@@ -2,27 +2,31 @@
 
 A free, open-source desktop application for organizing juror notes and tracking seat assignments during jury selection.
 
-![Jury Selection Tool](Example.png)
+![Jury Selection Tool v2](v2_example.png)
 
 ---
 
 ## Features
 
-- **Drag-and-drop seating** — click to assign jurors to seats on a configurable grid
-- **Multi-panel support** — manage multiple independent jury panels (e.g., Panel 1, Panel 2, Panel 3)
-- **Juror notes** — rich-text notes per juror with excusals and strike (pro/defense/both) tracking
-- **Final jury tracker** — mark seated jurors as final jury members
-- **PDF export** — generate a formatted report of all panels and juror details
-- **Autosave** — automatically saves your work at a configurable interval
+- **Drag-and-drop seating** — drag jurors from the pool onto a configurable seat grid
+- **Multi-panel support** — manage multiple independent jury panels with a single click
+- **Rich-text notes** — per-juror notes with bold, italic, and underline formatting
+- **Status tracking** — Seated, Excused, Defense Strike, Prosecution Strike, Both Struck, Final Jury
+- **Final jury tracker** — mark and order final jurors and alternates
+- **Priority ratings** — ▲▲▲ to ▼▼▼ priority flags per juror
+- **PDF export** — formatted report of all panels, seat assignments, and juror details
+- **CSV import** — bulk-add jurors from a spreadsheet
+- **Autosave** — automatically saves at a configurable interval
 - **Light and dark themes**
-- **Keyboard shortcuts** — `Ctrl+S` save, `Ctrl+O` open, `Ctrl+,` preferences
+- **Resizable columns** — drag the sidebar dividers; save preferred widths as default
+- **Keyboard shortcuts** — `Ctrl+S` save, `Ctrl+O` open, `Ctrl+,` preferences, `F1` help
 
 ---
 
 ## Installation (Windows)
 
 1. Go to the [**Releases**](https://github.com/hubcap12/Jury-Selection-Tool/releases) page
-2. Download **`JuryTool_Setup.exe`** from the latest release
+2. Download **`JuryTool_v2_Setup.exe`** from the latest release
 3. Run the installer and follow the prompts
 4. Launch **Jury Selection Tool** from the Start Menu or desktop shortcut
 
@@ -32,13 +36,13 @@ No Python installation required — the app is fully self-contained.
 
 ## Running from Source
 
-If you prefer to run directly from source (requires Python 3.10+):
+Requires Python 3.10+ and the dependencies below:
 
 ```bash
 git clone https://github.com/hubcap12/Jury-Selection-Tool.git
 cd Jury-Selection-Tool
-pip install reportlab pillow
-python jury.py
+pip install pywebview[qt] PySide6 reportlab
+python jury_v2.py
 ```
 
 ---
@@ -46,17 +50,30 @@ python jury.py
 ## Saving and Loading
 
 - **Save / Open**: `Ctrl+S` / `Ctrl+O` — saves as a `.json` file you can reopen later
-- **Autosave**: Automatically saves to `autosave.json` in your working directory (configurable in Preferences → Misc)
-- **Export PDF**: File menu → Export PDF
+- **Autosave**: Saves snapshots to your working directory at a configurable interval (Preferences → Autosave)
+- **Export PDF**: File → Export PDF, or via the action buttons in the left sidebar
 
 ---
 
 ## Transparency / Security
 
-This application is fully open source. The complete source code (`jury.py`) is available in this repository so anyone can inspect exactly what the program does before installing it. No data is ever sent over the internet — everything is stored locally on your machine.
+This application is fully open source. All source files are available in this repository so anyone can inspect exactly what the program does before installing it. No data is ever sent over the internet — everything is stored locally on your machine.
 
 ---
 
 ## License
 
 [PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and distribute for non-commercial purposes. Commercial use is not permitted.
+
+---
+
+## Previous version (v1 — Tkinter UI)
+
+The original Tkinter-based desktop UI is still available in this repository as `jury.py`. It has no additional dependencies beyond `reportlab` and `Pillow`, and runs on any platform with Python 3.10+.
+
+```bash
+pip install reportlab pillow
+python jury.py
+```
+
+Releases prior to v2.0.0 ship the Tkinter version as `JuryTool_Setup.exe`. If you need the old interface for any reason, download a pre-v2 release from the [Releases](https://github.com/hubcap12/Jury-Selection-Tool/releases) page.

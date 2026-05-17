@@ -292,6 +292,5 @@ class FileIOMixin:
         d = SETTINGS.get("work_dir", "")
         if d and os.path.isdir(d):
             return d
-        import sys
-        return getattr(sys, "_MEIPASS",
-                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        docs = os.path.expanduser("~/Documents")
+        return docs if os.path.isdir(docs) else os.path.expanduser("~")

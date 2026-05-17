@@ -2,12 +2,32 @@
 from __future__ import annotations
 import html
 import json
-import tkinter as tk
+import types
 
-from .colors import C
-from .config import SETTINGS
-from .fonts import FONTS
 from .models import Juror
+
+# Tkinter and related modules are optional — the pure serialisation helpers
+# (_notes_to_runs, _notes_to_rl_markup, _notes_plain) work without them.
+# The v2 pywebview bundle excludes tkinter; the v1 Tk app has it available.
+try:
+    import tkinter as tk
+    from .colors import C
+    from .config import SETTINGS
+    from .fonts import FONTS
+except ImportError:
+    # Stub so the module can be imported in the v2 bundle (no tkinter).
+    # Pure functions (_notes_to_runs, _notes_to_rl_markup) still work.
+    # Widget classes are defined but not usable — they are never instantiated
+    # in the v2 app.
+    tk = types.SimpleNamespace(
+        Frame=object, Text=object, Toplevel=object,
+        TclError=Exception, BooleanVar=object, StringVar=object,
+        Label=object, Button=object, OptionMenu=object, Widget=object,
+        Entry=object, Scrollbar=object,
+    )
+    C = {}
+    SETTINGS = {}
+    FONTS = {}
 
 
 # ── Notes serialisation helpers ───────────────────────────────────────────────

@@ -90,4 +90,5 @@ def work_dir() -> str:
     d = SETTINGS.get("work_dir", "") or ""
     if d and os.path.isdir(d):
         return d
-    return os.path.expanduser("~")
+    docs = os.path.expanduser("~/Documents")
+    return docs if os.path.isdir(docs) else os.path.expanduser("~")

@@ -13,9 +13,6 @@ Tk and webview front-ends.
 from __future__ import annotations
 import html
 from datetime import datetime
-from tkinter import filedialog, messagebox
-from tkinter.simpledialog import askstring
-import tkinter as tk
 
 from .config import SETTINGS
 from .richtext import _notes_to_rl_markup
@@ -24,7 +21,7 @@ from .richtext import _notes_to_rl_markup
 # ── Public Tk-facing wrapper ─────────────────────────────────────────────────
 
 def export_pdf(
-    parent:      tk.Tk,
+    parent,
     rows_n:      int,
     cols_n:      int,
     jury_size:   int,
@@ -35,6 +32,9 @@ def export_pdf(
     work_dir:    str,
 ) -> None:
     """Ask for title + path via Tk, then render."""
+    import tkinter as tk
+    from tkinter import filedialog, messagebox
+    from tkinter.simpledialog import askstring
     try:
         # Probe reportlab early so we can show the install hint dialog
         # before bothering the user with the title/path prompts.
