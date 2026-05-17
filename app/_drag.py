@@ -157,7 +157,7 @@ class DragMixin:
                 src_j.seat, src_j.panel = dst_num, self._active_panel
                 dst_j.seat, dst_j.panel = src_num, self._active_panel
                 self._drag_seat_info = None
-                self._refresh()
+                self._redraw()  # swap changes no pool/final lists — canvas only
             else:
                 self._vacate_seat(src_num)
                 self._drag_id = jid

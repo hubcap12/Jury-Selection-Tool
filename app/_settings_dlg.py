@@ -1,11 +1,11 @@
 from __future__ import annotations
 import os
 import tkinter as tk
-import tkinter.ttk as ttk
 import tkinter.font as tkfont
 from tkinter import filedialog
 
-from .colors import C
+from tkinter import colorchooser
+from .colors import C, DARK, LIGHT
 from .config import SETTINGS, DEFAULT_SETTINGS, _save_settings, _load_settings
 from .fonts import FONTS
 from .richtext import RichTextEditor
@@ -29,6 +29,44 @@ class SettingsDlgMixin:
 
         _orig_font_size      = SETTINGS["font_size"]
         _orig_seat_font_size = SETTINGS["seat_font_size"]
+        _orig_dark_colors    = dict(SETTINGS.get("dark_colors",  {}))
+        _orig_light_colors   = dict(SETTINGS.get("light_colors", {}))
+        _color_edits = {
+            "dark":  dict(SETTINGS.get("dark_colors",  {})),
+            "light": dict(SETTINGS.get("light_colors", {})),
+        }
+
+        _COLOR_GROUPS = [
+            ("Background", [
+                ("bg",        "App Background"),
+                ("canvas_bg", "Canvas"),
+                ("status_bg", "Detail Panel"),
+                ("fj_det_bg", "Final Jury Panel"),
+            ]),
+            ("Seats", [
+                ("seat_empty",   "Empty Seat"),
+                ("seat_seated",  "Seated"),
+                ("seat_excused", "Excused"),
+                ("seat_struck",  "Struck"),
+                ("seat_final",   "Final Juror"),
+                ("seat_alt_fin", "Alternate"),
+            ]),
+            ("Text", [
+                ("txt_dark",      "Primary Text"),
+                ("txt_secondary", "Secondary Text"),
+                ("input_fg",      "Input Text"),
+                ("btn_fg",        "Button Text"),
+            ]),
+            ("Controls", [
+                ("input_bg", "Input Background"),
+                ("btn_bg",   "Button Background"),
+                ("divider",  "Divider"),
+            ]),
+            ("Strike Lists", [
+                ("danger_bg", "Background"),
+                ("danger_fg", "Text"),
+            ]),
+        ]
         _orig_rte_font       = SETTINGS["rte_font"]
         _orig_rte_bold       = SETTINGS["rte_bold"]
         _orig_rte_italic     = SETTINGS["rte_italic"]
@@ -85,7 +123,7 @@ class SettingsDlgMixin:
             outer.columnconfigure(0, weight=1)
 
             cv  = tk.Canvas(outer, bg=C["bg"], highlightthickness=0)
-            vsb = ttk.Scrollbar(outer, orient="vertical", command=cv.yview)
+            vsb = tk.Scrollbar(outer, orient="vertical", command=cv.yview)
             cv.configure(yscrollcommand=vsb.set)
             cv.grid(row=0, column=0, sticky="nsew")
 
@@ -383,6 +421,93 @@ class SettingsDlgMixin:
                  ).grid(row=r, column=1, sticky="ew", pady=4)
         r += 1
 
+        add_section(at, "Theme Colors", r); r += 2
+
+        # Which theme's colors to edit
+        v_edit_theme = tk.StringVar(value=self._theme_name)
+        _swatch_btns: dict = {}
+
+        def _base_palette(theme):
+            return DARK if theme == "dark" else LIGHT
+
+        def _pick_color(theme, key, label):
+            cur = _color_edits[theme].get(key, _base_palette(theme)[key])
+            res = colorchooser.askcolor(color=cur, parent=dlg, title=f"Color — {label}")
+            if not res or not res[1]:
+                return
+            chosen = res[1].lower()
+            default_val = _base_palette(theme).get(key, "").lower()
+            if chosen == default_val:
+                _color_edits[theme].pop(key, None)
+            else:
+                _color_edits[theme][key] = res[1]
+            if (theme, key) in _swatch_btns:
+                _swatch_btns[(theme, key)].configure(bg=res[1])
+
+        def _build_color_grid():
+            for w in _cgrid.winfo_children():
+                w.destroy()
+            _swatch_btns.clear()
+            theme = v_edit_theme.get()
+            base  = _base_palette(theme)
+            _cgrid.columnconfigure(0, weight=1)
+            _cgrid.columnconfigure(1, weight=1)
+            cr = 0
+            for grp_name, entries in _COLOR_GROUPS:
+                tk.Label(_cgrid, text=grp_name, bg=C["bg"], fg=C["txt_secondary"],
+                         font=_dlg_fonts["sm_bold"]
+                         ).grid(row=cr, column=0, columnspan=2, sticky="w",
+                                padx=2, pady=(8, 2))
+                cr += 1
+                col = 0
+                for key, lbl in entries:
+                    color = _color_edits[theme].get(key, base[key])
+                    cell  = tk.Frame(_cgrid, bg=C["bg"])
+                    cell.grid(row=cr, column=col, sticky="w", padx=(2, 10), pady=3)
+                    btn = tk.Button(cell, bg=color, width=3, height=1,
+                                    relief="solid", bd=1, cursor="hand2",
+                                    highlightthickness=0,
+                                    command=lambda t=theme, k=key, l=lbl: _pick_color(t, k, l))
+                    btn.pack(side="left", padx=(0, 6))
+                    tk.Label(cell, text=lbl, bg=C["bg"], fg=C["txt_dark"],
+                             font=_dlg_fonts["sm"]).pack(side="left")
+                    _swatch_btns[(theme, key)] = btn
+                    col += 1
+                    if col >= 2:
+                        col = 0
+                        cr += 1
+                if col > 0:
+                    cr += 1
+
+        def _reset_colors():
+            _color_edits[v_edit_theme.get()].clear()
+            _build_color_grid()
+
+        tsf = tk.Frame(at, bg=C["bg"])
+        tsf.grid(row=r, column=0, columnspan=3, sticky="ew", padx=10, pady=(4, 0))
+        tsf.columnconfigure(1, weight=1)
+        ef = tk.Frame(tsf, bg=C["bg"])
+        ef.grid(row=0, column=0, sticky="w")
+        tk.Label(ef, text="Edit:", bg=C["bg"], fg=C["txt_dark"],
+                 font=_dlg_fonts["md"]).pack(side="left", padx=(0, 8))
+        for tv, tl in (("dark", "Dark"), ("light", "Light")):
+            tk.Radiobutton(ef, text=tl, variable=v_edit_theme, value=tv,
+                           bg=C["bg"], fg=C["txt_dark"], selectcolor=C["btn_bg"],
+                           activebackground=C["bg"], font=_dlg_fonts["md"],
+                           command=_build_color_grid).pack(side="left", padx=(0, 10))
+        tk.Button(tsf, text="Reset to Default", cursor="hand2",
+                  bg=C["btn_bg"], fg=C["btn_fg"], relief="solid", bd=1,
+                  highlightthickness=0, activebackground=C["btn_hover"],
+                  activeforeground=C["txt_light"], font=_dlg_fonts["sm"],
+                  padx=6, pady=2, command=_reset_colors
+                  ).grid(row=0, column=2, sticky="e", padx=(0, 10))
+        r += 1
+
+        _cgrid = tk.Frame(at, bg=C["bg"])
+        _cgrid.grid(row=r, column=0, columnspan=3, sticky="ew", padx=10, pady=(2, 6))
+        _build_color_grid()
+        r += 1
+
         # ── Notes tab ─────────────────────────────────────────────────────────
         nt = inner_pages["Notes"]
         r = 0
@@ -569,6 +694,8 @@ class SettingsDlgMixin:
             self._temp_zoom = None
             SETTINGS["zoom_default"]        = _orig_zoom
             SETTINGS["seat_font_size"]      = _orig_seat_font_size
+            SETTINGS["dark_colors"]         = _orig_dark_colors
+            SETTINGS["light_colors"]        = _orig_light_colors
             SETTINGS["rte_font"]            = _orig_rte_font
             SETTINGS["rte_bold"]            = _orig_rte_bold
             SETTINGS["rte_italic"]          = _orig_rte_italic
@@ -585,8 +712,7 @@ class SettingsDlgMixin:
             SETTINGS["work_dir"]            = _orig_work_dir
             if SETTINGS["font_size"] != _orig_font_size:
                 self._rescale_fonts(_orig_font_size)
-            else:
-                self._redraw()
+            self._apply_theme(self._theme_name)
             dlg.destroy()
 
         def _reset():
@@ -619,6 +745,9 @@ class SettingsDlgMixin:
             v_pdf_font.set(DEFAULT_SETTINGS["pdf_font"])
             v_pdf_filename.set(DEFAULT_SETTINGS["pdf_filename"])
             v_work_dir.set(DEFAULT_SETTINGS["work_dir"])
+            _color_edits["dark"].clear()
+            _color_edits["light"].clear()
+            _build_color_grid()
 
         def _commit():
             new_rows   = int(v_rows.get())
@@ -672,6 +801,8 @@ class SettingsDlgMixin:
             if new_num_panels != len(self.panel_seats):
                 self._resize_panels(new_num_panels)
 
+            SETTINGS["dark_colors"]  = dict(_color_edits["dark"])
+            SETTINGS["light_colors"] = dict(_color_edits["light"])
             self._apply_theme(SETTINGS["theme"])
             self._temp_zoom = None
             self._zoom_var.set(SETTINGS["zoom_default"])

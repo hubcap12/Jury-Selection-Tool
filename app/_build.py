@@ -1,6 +1,5 @@
 from __future__ import annotations
 import tkinter as tk
-import tkinter.ttk as ttk
 
 from .colors import C
 from .config import SETTINGS
@@ -62,7 +61,7 @@ class BuildMixin:
 
         box = tk.Frame(pool_pane, bg=C["bg"])
         box.pack(fill="both", expand=True)
-        sb = ttk.Scrollbar(box, orient="vertical")
+        sb = tk.Scrollbar(box)
         sb.pack(side="right", fill="y")
         self.pool_lb = tk.Listbox(
             box, yscrollcommand=sb.set, font=FONTS["lg"],
@@ -118,7 +117,7 @@ class BuildMixin:
                  bg=C["bg"], fg=C["txt_secondary"]).pack(anchor="w", pady=(4, 2), padx=2)
         exc_box = tk.Frame(exc_pane, bg=C["bg"])
         exc_box.pack(fill="both", expand=True)
-        exc_sb = ttk.Scrollbar(exc_box, orient="vertical")
+        exc_sb = tk.Scrollbar(exc_box)
         exc_sb.pack(side="right", fill="y")
         self.excused_lb = tk.Listbox(
             exc_box, yscrollcommand=exc_sb.set, font=FONTS["md"],
@@ -141,7 +140,7 @@ class BuildMixin:
                  bg=C["bg"], fg=C["danger_fg"]).pack(anchor="w", pady=(4, 2), padx=2)
         def_box = tk.Frame(def_pane, bg=C["bg"])
         def_box.pack(fill="both", expand=True)
-        def_sb = ttk.Scrollbar(def_box, orient="vertical")
+        def_sb = tk.Scrollbar(def_box)
         def_sb.pack(side="right", fill="y")
         self.def_struck_lb = tk.Listbox(
             def_box, yscrollcommand=def_sb.set, font=FONTS["md"],
@@ -164,7 +163,7 @@ class BuildMixin:
                  bg=C["bg"], fg=C["danger_fg"]).pack(anchor="w", pady=(4, 2), padx=2)
         pro_box = tk.Frame(pro_pane, bg=C["bg"])
         pro_box.pack(fill="both", expand=True)
-        pro_sb = ttk.Scrollbar(pro_box, orient="vertical")
+        pro_sb = tk.Scrollbar(pro_box)
         pro_sb.pack(side="right", fill="y")
         self.pro_struck_lb = tk.Listbox(
             pro_box, yscrollcommand=pro_sb.set, font=FONTS["md"],
@@ -187,7 +186,7 @@ class BuildMixin:
                  bg=C["bg"], fg=C["danger_fg"]).pack(anchor="w", pady=(4, 2), padx=2)
         both_box = tk.Frame(both_pane, bg=C["bg"])
         both_box.pack(fill="both", expand=True)
-        both_sb = ttk.Scrollbar(both_box, orient="vertical")
+        both_sb = tk.Scrollbar(both_box)
         both_sb.pack(side="right", fill="y")
         self.both_struck_lb = tk.Listbox(
             both_box, yscrollcommand=both_sb.set, font=FONTS["md"],
@@ -218,7 +217,7 @@ class BuildMixin:
 
         fj_box = tk.Frame(fj_list_pane, bg=C["bg"])
         fj_box.pack(fill="both", expand=True)
-        fj_sb = ttk.Scrollbar(fj_box, orient="vertical")
+        fj_sb = tk.Scrollbar(fj_box)
         fj_sb.pack(side="right", fill="y")
         self.final_lb = tk.Listbox(
             fj_box, yscrollcommand=fj_sb.set, font=FONTS["lg"],

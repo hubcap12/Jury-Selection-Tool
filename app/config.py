@@ -40,6 +40,8 @@ DEFAULT_SETTINGS: dict = {
     "pdf_filename":     "jury_report.pdf",
     "work_dir":         "",
     "both_height":      100,
+    "dark_colors":      {},
+    "light_colors":     {},
 }
 
 

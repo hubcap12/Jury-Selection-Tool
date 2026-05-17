@@ -1,8 +1,11 @@
 from __future__ import annotations
 import tkinter as tk
-import tkinter.ttk as ttk
 
 from .colors import C, DARK, LIGHT
+
+# Probe which properties each widget class supports once, then cache.
+# Avoids repeated TclError catches across the whole widget tree on every theme switch.
+_WIDGET_PROPS_CACHE: dict[type, tuple] = {}
 from .config import SETTINGS
 from .fonts import FONTS, _FONT_DEFS
 from .richtext import _load_rich_into_text
@@ -23,46 +26,37 @@ class ThemeMixin:
             self._fj_det_notes_text.config(state="disabled")
         self._redraw()
 
-    def _configure_scrollbar_style(self):
-        s = self._ttk_style
-        for orient in ("Vertical", "Horizontal"):
-            s.configure(f"{orient}.TScrollbar",
-                background=C["btn_bg"],
-                troughcolor=C["input_bg"],
-                arrowcolor=C["txt_secondary"],
-                borderwidth=0,
-                relief="flat",
-                arrowsize=12,
-            )
-            s.map(f"{orient}.TScrollbar",
-                background=[("active", C["btn_hover"]), ("disabled", C["btn_bg"])],
-                arrowcolor=[("disabled", C["txt_muted"])],
-            )
-
     def _apply_theme(self, name: str):
         old = dict(C)
-        C.update(DARK if name == "dark" else LIGHT)
+        base = DARK if name == "dark" else LIGHT
+        C.update({**base, **SETTINGS.get(f"{name}_colors", {})})
         self._theme_name = name
         color_map = {old[k]: C[k] for k in C if old.get(k) != C.get(k)}
         self._retheme_widget(self, color_map)
-        self._configure_scrollbar_style()
         self.canvas.configure(bg=C["canvas_bg"])
         self._update_theme_buttons()
         self._redraw()
 
     def _retheme_widget(self, widget, color_map: dict):
-        props = ("background", "foreground", "selectbackground", "selectforeground",
-                 "activebackground", "activeforeground", "insertbackground",
-                 "highlightbackground", "buttonbackground", "troughcolor",
-                 "readonlybackground", "selectcolor")
+        cls = type(widget)
+        if cls not in _WIDGET_PROPS_CACHE:
+            _all = ("background", "foreground", "selectbackground", "selectforeground",
+                    "activebackground", "activeforeground", "insertbackground",
+                    "highlightbackground", "buttonbackground", "troughcolor",
+                    "readonlybackground", "selectcolor")
+            supported = []
+            for prop in _all:
+                try:
+                    widget.cget(prop)
+                    supported.append(prop)
+                except tk.TclError:
+                    pass
+            _WIDGET_PROPS_CACHE[cls] = tuple(supported)
         kw = {}
-        for prop in props:
-            try:
-                val = str(widget.cget(prop))
-                if val in color_map:
-                    kw[prop] = color_map[val]
-            except tk.TclError:
-                pass
+        for prop in _WIDGET_PROPS_CACHE[cls]:
+            val = str(widget.cget(prop))
+            if val in color_map:
+                kw[prop] = color_map[val]
         if kw:
             try:
                 widget.configure(**kw)

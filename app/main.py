@@ -1,6 +1,5 @@
 from __future__ import annotations
 import tkinter as tk
-import tkinter.ttk as ttk
 from tkinter import messagebox
 
 from .colors import C, LIGHT
@@ -51,19 +50,18 @@ class JuryApp(
         self._fj_pos:     dict[int, int]         = {}
 
         self._theme_name:     str               = SETTINGS["theme"]
+        _overrides = SETTINGS.get(f"{SETTINGS['theme']}_colors", {})
         if SETTINGS["theme"] == "light":
-            C.update(LIGHT)
-            self.configure(bg=C["bg"])
+            C.update({**LIGHT, **_overrides})
+        elif _overrides:
+            C.update(_overrides)
+        self.configure(bg=C["bg"])
         self._corner:         str               = SETTINGS["corner"]
         _init_fonts(SETTINGS["font_size"])
 
         self.SW:   int = SETTINGS["seat_width"]
         self.SH:   int = SETTINGS["seat_height"]
         self.SGAP: int = SETTINGS["seat_gap"]
-
-        self._ttk_style = ttk.Style(self)
-        self._ttk_style.theme_use("clam")
-        self._configure_scrollbar_style()
 
         self._autosave_id:    str | None        = None
         self._drag_id:        int | None        = None

@@ -17,6 +17,7 @@ class DetailMixin:
         self._det_kw_entry.config(state="readonly")
         self._det_notes_text._text.config(state="normal")
         self._det_notes_text.set_runs([])
+        self._det_notes_text._text.edit_modified(False)
         self._det_notes_text._text.config(state="disabled")
         self._det_notes_loaded = ""
         self._update_rating_buttons(0)
@@ -28,6 +29,10 @@ class DetailMixin:
         if not j:
             return
         new_kw = self._det_kw_entry.get().strip()
+        # Skip the expensive get_runs() walk if nothing could have changed.
+        if (new_kw == j.keywords and
+                not self._det_notes_text._text.edit_modified()):
+            return
         runs   = self._det_notes_text.get_runs()
         if runs and any(k in r for r in runs
                         for k in ("bold", "italic", "underline", "font")):
@@ -120,6 +125,7 @@ class DetailMixin:
         self._det_kw_entry.insert(0, j.keywords)
         self._det_notes_text._text.config(state="normal")
         self._det_notes_text.set_runs(_notes_to_runs(j.notes))
+        self._det_notes_text._text.edit_modified(False)
         self._det_notes_loaded = j.notes
         self._update_rating_buttons(j.rating)
 

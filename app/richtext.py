@@ -348,8 +348,10 @@ class RichTextEditor(tk.Frame):
             if self._text.compare(pre, ">=", end_pos):
                 continue
             tag = self._get_tag(bold, italic, underline, family)
-            for t in set(self._tag_cache.values()):
-                self._text.tag_remove(t, pre, end_pos)
+            existing = next(
+                (t for t in self._text.tag_names(pre) if t in self._rev_cache), None)
+            if existing and existing != tag:
+                self._text.tag_remove(existing, pre, end_pos)
             self._text.tag_add(tag, pre, end_pos)
 
     def _on_return(self, _=None):
@@ -387,8 +389,10 @@ class RichTextEditor(tk.Frame):
     def _apply_fmt_direct(self, start: str, end: str):
         tag = self._get_tag(self._bold, self._italic,
                             self._underline, self._family)
-        for t in set(self._tag_cache.values()):
-            self._text.tag_remove(t, start, end)
+        existing = next(
+            (t for t in self._text.tag_names(start) if t in self._rev_cache), None)
+        if existing and existing != tag:
+            self._text.tag_remove(existing, start, end)
         self._text.tag_add(tag, start, end)
 
     # ── Selection helpers ─────────────────────────────────────────────────────

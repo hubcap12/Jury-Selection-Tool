@@ -59,6 +59,7 @@ class DrawMixin:
         js        = max(1, int(self.jury_size_var.get()))
         fj_pos    = self._fj_pos
 
+        cur_seats = self.seats  # cache property lookup for the entire redraw
         xywh: dict[int, tuple] = {}
         for r in range(rows):
             for c in range(cols):
@@ -67,7 +68,7 @@ class DrawMixin:
                 y  = oy + r * (sh + sgap)
                 xywh[sn] = (x, y)
                 self._draw_seat(sn, x, y, sw, sh, scale,
-                                f_sm, f_md, f_empty, spad, js, fj_pos)
+                                f_sm, f_md, f_empty, spad, js, fj_pos, cur_seats)
 
         self._seat_geo = dict(sw=sw, sh=sh, sgap=sgap, ox=ox, oy=oy,
                               rows=rows, cols=cols, scale=scale,
@@ -76,8 +77,8 @@ class DrawMixin:
 
     def _draw_seat(self, num: int, x: int, y: int, sw: int, sh: int, scale: float,
                    f_sm: int, f_md: int, f_empty: int, spad: int, js: int,
-                   fj_pos: dict):
-        jid   = self.seats.get(num)
+                   fj_pos: dict, cur_seats: dict | None = None):
+        jid   = (cur_seats if cur_seats is not None else self.seats).get(num)
         juror = self.jurors.get(jid) if jid else None
         tag   = f"seat_{num}"
         hover = self._hovered == (False, num)

@@ -5,6 +5,16 @@ from .colors import C
 from .fonts import FONTS
 
 
+def _sync_lb(lb: tk.Listbox, labels: list[str]) -> bool:
+    """Update listbox only when content changed. Returns True if a change was made."""
+    if list(lb.get(0, "end")) == labels:
+        return False
+    lb.delete(0, "end")
+    if labels:
+        lb.insert("end", *labels)
+    return True
+
+
 class PoolMixin:
 
     def _refresh_pool(self):
@@ -28,25 +38,11 @@ class PoolMixin:
         self._pro_struck_ids   = [j.id for j in pro_struck]
         self._both_struck_ids  = [j.id for j in both_struck]
 
-        self.pool_lb.delete(0, "end")
-        if pool:
-            self.pool_lb.insert("end", *[j.label for j in pool])
-
-        self.excused_lb.delete(0, "end")
-        if excused:
-            self.excused_lb.insert("end", *[j.label for j in excused])
-
-        self.def_struck_lb.delete(0, "end")
-        if def_struck:
-            self.def_struck_lb.insert("end", *[j.label for j in def_struck])
-
-        self.pro_struck_lb.delete(0, "end")
-        if pro_struck:
-            self.pro_struck_lb.insert("end", *[j.label for j in pro_struck])
-
-        self.both_struck_lb.delete(0, "end")
-        if both_struck:
-            self.both_struck_lb.insert("end", *[j.label for j in both_struck])
+        _sync_lb(self.pool_lb,       [j.label for j in pool])
+        _sync_lb(self.excused_lb,    [j.label for j in excused])
+        _sync_lb(self.def_struck_lb, [j.label for j in def_struck])
+        _sync_lb(self.pro_struck_lb, [j.label for j in pro_struck])
+        _sync_lb(self.both_struck_lb,[j.label for j in both_struck])
 
     def _refresh(self):
         self._refresh_pool()
