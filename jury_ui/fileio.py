@@ -173,10 +173,9 @@ def import_csv(api, path: str) -> int:
     if not rows:
         return 0
 
-    # Detect header and column roles.
+    # Detect header row.
     first = [c.strip().lower() for c in rows[0]]
     has_header = first and first[0] in ("name", "juror", "full name", "first")
-    col2_is_dob = has_header and len(first) > 1 and first[1] in _DOB_HEADERS
     body = rows[1:] if has_header else rows
 
     for row in body:
@@ -185,8 +184,11 @@ def import_csv(api, path: str) -> int:
         name = row[0].strip()
         if not name:
             continue
-        raw2     = row[1].strip() if len(row) > 1 else ""
-        age      = str(_age_from_dob(raw2)) if col2_is_dob else raw2
+        raw2 = row[1].strip() if len(row) > 1 else ""
+        # Always try to parse column 2 as a date of birth first; fall back to
+        # treating it as a plain age integer if it doesn't look like a date.
+        dob_age = _age_from_dob(raw2)
+        age     = str(dob_age) if dob_age > 0 else raw2
         keywords = row[2].strip() if len(row) > 2 else ""
         notes    = row[3].strip() if len(row) > 3 else ""
         api.add_juror(name=name, age=age, notes=notes, keywords=keywords)
