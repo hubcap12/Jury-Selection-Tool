@@ -2,11 +2,12 @@
 """Jury Selection Tool — webview UI entry point.
 
 Run with:  python jury_v2.py
-
-The original Tkinter entry point (``jury.py``) is unaffected; this file
-exists alongside it so you can run either while migrating.
 """
-from jury_ui import run
+import os
+
+# Use Qt (PySide6) backend — avoids .NET dependency entirely.
+os.environ.setdefault("PYWEBVIEW_GUI", "qt")
 
 if __name__ == "__main__":
+    from jury_ui import run
     run()

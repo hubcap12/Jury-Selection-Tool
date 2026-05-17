@@ -1,27 +1,31 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for the webview-based UI (Stage 1+).
+# PyInstaller spec for the webview-based UI.
 # Run from the repo root with:  pyinstaller JuryTool_v2.spec
 #
-# Differences vs. JuryTool.spec:
-#   • Entry point is jury_v2.py instead of jury.py
-#   • The static folder (jury_ui/static) is bundled as data so pywebview
-#     can find index.html / css / js / vendor at runtime.
-#   • Output exe is renamed JuryTool_v2 so both can ship side-by-side.
+# Uses pywebview's Qt (PySide6) backend — no .NET dependency.
 
+from PyInstaller.utils.hooks import collect_all
+
+pyside6_datas, pyside6_binaries, pyside6_hiddenimports = collect_all('PySide6')
 
 a = Analysis(
     ['jury_v2.py'],
     pathex=[],
-    binaries=[],
+    binaries=pyside6_binaries,
     datas=[
         ('icon.ico', '.'),
         ('jury_ui/static', 'jury_ui/static'),
+        *pyside6_datas,
     ],
-    hiddenimports=[],
+    hiddenimports=[
+        *pyside6_hiddenimports,
+        'qtpy',
+        'webview.platforms.qt',
+    ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['rthook_pythonnet.py'],
     excludes=[],
     noarchive=False,
     optimize=0,
