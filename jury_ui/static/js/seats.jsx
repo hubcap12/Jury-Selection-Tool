@@ -93,14 +93,23 @@ function Seat({ seatNo, juror, selected, onClick, onDropJuror }) {
   );
 }
 
-function SeatGrid({ rows, cols, jurors, selectedSeat, onSelectSeat, onDropJuror }) {
+function seatNum(r, c, rows, cols, corner) {
+  switch (corner) {
+    case "TR": return r * cols + (cols - 1 - c) + 1;
+    case "BL": return (rows - 1 - r) * cols + c + 1;
+    case "BR": return (rows - 1 - r) * cols + (cols - 1 - c) + 1;
+    default:   return r * cols + c + 1; // TL
+  }
+}
+
+function SeatGrid({ rows, cols, corner, jurors, selectedSeat, onSelectSeat, onDropJuror }) {
   const bySeat = {};
   jurors.forEach(j => { if (j.seat) bySeat[j.seat] = j; });
 
   const cells = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const seatNo = r * cols + c + 1;
+      const seatNo = seatNum(r, c, rows, cols, corner || "TL");
       cells.push(
         <Seat
           key={seatNo}

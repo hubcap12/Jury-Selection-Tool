@@ -285,6 +285,7 @@ function JuryApp() {
           <SeatGrid
             rows={rows}
             cols={cols}
+            corner={corner}
             jurors={jurors.filter(j => j.panel === activePanel)}
             selectedSeat={selectedSeat}
             onSelectSeat={handleSelectSeat}

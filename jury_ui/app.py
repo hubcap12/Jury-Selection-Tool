@@ -9,7 +9,6 @@ import webview as pywebview  # pywebview installs as 'webview' module
 
 from .api import JuryAPI
 from .fileio import Autosaver
-from .state import populate_sample
 from . import settings as _settings
 
 
@@ -34,7 +33,6 @@ def run() -> None:
     api = JuryAPI()
     work_dir = _settings.work_dir()
     api.set_work_dir(work_dir)
-    populate_sample(api)  # Demo data on first launch; user's autosave/load replaces it.
 
     html_path = _resource_path("jury_ui", "static", "index.html")
     if not os.path.exists(html_path):
