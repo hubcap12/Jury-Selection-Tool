@@ -13,10 +13,32 @@ function RatingArrows({ rating }) {
   );
 }
 
-function Seat({ seatNo, juror, selected, onClick }) {
+function Seat({ seatNo, juror, selected, onClick, onDropJuror }) {
+  const [dragOver, setDragOver] = React.useState(false);
+
+  const dropProps = {
+    onDragOver: (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (!dragOver) setDragOver(true);
+    },
+    onDragLeave: () => setDragOver(false),
+    onDrop: (e) => {
+      e.preventDefault();
+      setDragOver(false);
+      const jid = parseInt(e.dataTransfer.getData("text/plain"), 10);
+      if (!Number.isNaN(jid)) onDropJuror && onDropJuror(jid, seatNo);
+    },
+  };
+
   if (!juror) {
     return (
-      <button className="seat seat-empty" onClick={onClick} aria-label={`Seat ${seatNo}, empty`}>
+      <button
+        className={"seat seat-empty" + (dragOver ? " is-drag-over" : "")}
+        onClick={onClick}
+        aria-label={`Seat ${seatNo}, empty`}
+        {...dropProps}
+      >
         <span className="seat-stripe" aria-hidden="true"></span>
         <header className="seat-eyebrow">
           <span className="seat-num">{String(seatNo).padStart(2,"0")}</span>
@@ -42,10 +64,20 @@ function Seat({ seatNo, juror, selected, onClick }) {
     "seat",
     `seat-${juror.status}`,
     selected ? "is-selected" : "",
+    dragOver ? "is-drag-over" : "",
   ].join(" ").trim();
 
   return (
-    <button className={cls} onClick={onClick}>
+    <button
+      className={cls}
+      onClick={onClick}
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", String(juror.id));
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      {...dropProps}
+    >
       <span className="seat-stripe" aria-hidden="true"></span>
       <header className="seat-eyebrow">
         <span className="seat-num">{String(seatNo).padStart(2,"0")}</span>
@@ -61,7 +93,7 @@ function Seat({ seatNo, juror, selected, onClick }) {
   );
 }
 
-function SeatGrid({ rows, cols, jurors, selectedSeat, onSelectSeat }) {
+function SeatGrid({ rows, cols, jurors, selectedSeat, onSelectSeat, onDropJuror }) {
   const bySeat = {};
   jurors.forEach(j => { if (j.seat) bySeat[j.seat] = j; });
 
@@ -76,6 +108,7 @@ function SeatGrid({ rows, cols, jurors, selectedSeat, onSelectSeat }) {
           juror={bySeat[seatNo]}
           selected={selectedSeat === seatNo}
           onClick={() => onSelectSeat(seatNo)}
+          onDropJuror={onDropJuror}
         />
       );
     }

@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import sys
 
-import webview as pywebview
+import webview as pywebview  # pywebview installs as 'webview' module
 
 from .api import JuryAPI
 from .state import populate_sample

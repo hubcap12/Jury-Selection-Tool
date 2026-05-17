@@ -122,7 +122,17 @@ function ControlBar({
 
 /* -------------------------------------------------------------------------- */
 
-function DetailEditor({ juror, panel }) {
+function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
+                       onSetRating, onMarkFinal, onUnmarkFinal, onUnseat }) {
+  // Local edit state — saves to Python on blur so we don't ping on every keystroke.
+  const [kw, setKw]     = React.useState("");
+  const [notes, setNotes] = React.useState("");
+
+  React.useEffect(() => {
+    setKw(juror?.keywords || "");
+    setNotes(juror?.notes || "");
+  }, [juror?.id]);
+
   if (!juror) {
     return (
       <section className="detail">
@@ -132,13 +142,24 @@ function DetailEditor({ juror, panel }) {
     );
   }
 
+  const status = juror.status || "seated";
+  const isFinal = status === "final";
+
+  const Status = ({ value, label, tone }) => (
+    <button
+      className={"status-pill tone-" + (tone || "neutral") + (status === value ? " is-active" : "")}
+      onClick={() => onSetStatus && onSetStatus(juror.id, value)}
+    >{label}</button>
+  );
+
   return (
     <section className="detail">
       <div className="detail-tab">Juror Details</div>
 
       <div className="detail-head">
-        <span className="chip chip-panel">Panel {panel}</span>
-        <span className="chip chip-seat">Seat {juror.seat}</span>
+        {juror.seat && <span className="chip chip-panel">Panel {panel}</span>}
+        {juror.seat && <span className="chip chip-seat">Seat {juror.seat}</span>}
+        {!juror.seat && <span className="chip chip-pool">Pool</span>}
         <span className="detail-sep">—</span>
         <span className="detail-jid">Juror #{juror.id}</span>
         <span className="detail-name">{juror.name}</span>
@@ -147,44 +168,71 @@ function DetailEditor({ juror, panel }) {
       </div>
 
       <div className="detail-grid">
+        <label className="detail-label">Status:</label>
+        <div className="status-row">
+          <Status value="seated"      label="Seated"      tone="seated"/>
+          <Status value="excused"     label="Excused"     tone="excused"/>
+          <Status value="struck_def"  label="Def. Strike" tone="struck"/>
+          <Status value="struck_pro"  label="Pro. Strike" tone="struck"/>
+          <Status value="struck_both" label="Both Struck" tone="struck"/>
+          <button
+            className={"status-pill tone-final" + (isFinal ? " is-active" : "")}
+            onClick={() => isFinal ? onUnmarkFinal(juror.id) : onMarkFinal(juror.id)}
+          >{isFinal ? `Final #${juror.finalNo}` : "Final"}</button>
+          {juror.seat && (
+            <button className="status-pill tone-neutral" onClick={() => onUnseat(juror.id)} title="Return to pool">
+              Unseat
+            </button>
+          )}
+        </div>
+
         <label className="detail-label">Keywords:</label>
-        <input className="input" defaultValue={juror.keywords || ""} placeholder="Add keywords…"/>
+        <input className="input"
+               value={kw}
+               onChange={(e) => setKw(e.target.value)}
+               onBlur={() => onSaveKeywords && onSaveKeywords(juror.id, kw)}
+               placeholder="Add keywords…"/>
 
         <label className="detail-label detail-label-top">Notes:</label>
         <div className="notes-wrap">
           <div className="notes-toolbar">
-            <select className="select select-sm" defaultValue="Helvetica">
-              <option>Helvetica</option>
+            <select className="select select-sm" defaultValue="Segoe UI" disabled>
               <option>Segoe UI</option>
+              <option>Helvetica</option>
               <option>Consolas</option>
               <option>Georgia</option>
             </select>
-            <select className="select select-sm select-tiny" defaultValue="10">
+            <select className="select select-sm select-tiny" defaultValue="10" disabled>
               <option>8</option><option>9</option><option>10</option>
               <option>11</option><option>12</option><option>14</option>
             </select>
             <span className="tb-divider"></span>
-            <button className="tb-btn tb-btn-b"><b>B</b></button>
-            <button className="tb-btn tb-btn-i"><i>I</i></button>
-            <button className="tb-btn tb-btn-u"><u>U</u></button>
+            <button className="tb-btn tb-btn-b" disabled title="Rich-text editor — Stage 4"><b>B</b></button>
+            <button className="tb-btn tb-btn-i" disabled title="Rich-text editor — Stage 4"><i>I</i></button>
+            <button className="tb-btn tb-btn-u" disabled title="Rich-text editor — Stage 4"><u>U</u></button>
             <span className="tb-divider"></span>
-            <button className="tb-btn">•</button>
+            <button className="tb-btn" disabled>•</button>
             <span className="tb-divider"></span>
-            <button className="tb-btn tb-btn-text">Clear fmt</button>
+            <button className="tb-btn tb-btn-text" disabled>Clear fmt</button>
           </div>
-          <textarea className="notes-area" defaultValue={juror.notes || ""} placeholder="Type notes…"></textarea>
+          <textarea className="notes-area"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    onBlur={() => onSaveNotes && onSaveNotes(juror.id, notes)}
+                    placeholder="Type notes…"></textarea>
         </div>
       </div>
 
       <div className="detail-priority">
         <label className="detail-label">Priority:</label>
         <div className="priority-row">
-          <button className="prio-btn prio-up3"   title="Strong positive">▲▲▲</button>
-          <button className="prio-btn prio-up2"   title="Positive">▲▲</button>
-          <button className="prio-btn prio-up1"   title="Slight positive">▲</button>
-          <button className="prio-btn prio-down1" title="Slight negative">▼</button>
-          <button className="prio-btn prio-down2" title="Negative">▼▼</button>
-          <button className="prio-btn prio-down3" title="Strong negative">▼▼▼</button>
+          <button className={"prio-btn prio-up3"   + (juror.rating ===  3 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  3)}>▲▲▲</button>
+          <button className={"prio-btn prio-up2"   + (juror.rating ===  2 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  2)}>▲▲</button>
+          <button className={"prio-btn prio-up1"   + (juror.rating ===  1 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  1)}>▲</button>
+          <button className={"prio-btn prio-down1" + (juror.rating === -1 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -1)}>▼</button>
+          <button className={"prio-btn prio-down2" + (juror.rating === -2 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -2)}>▼▼</button>
+          <button className={"prio-btn prio-down3" + (juror.rating === -3 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -3)}>▼▼▼</button>
+          <button className={"prio-btn prio-clear" + (juror.rating ===  0 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  0)} title="Clear priority">—</button>
         </div>
       </div>
     </section>

@@ -25,7 +25,7 @@ webview/
     css/main.css
     js/
       app.jsx · seats.jsx · sidebars.jsx · controls.jsx
-      tweaks-panel.jsx · data.js
+      modal.jsx · tweaks-panel.jsx · data.js
       vendor/                      ← populated by vendor_setup.py (gitignored)
 ```
 
@@ -42,16 +42,22 @@ verify in Task Manager → Performance → network: zero traffic for the
 process.  The HTML / JS / CSS files are all served from disk by pywebview,
 just like the rest of your Python source.
 
-## What works in Stage 1
+## What works in Stage 2
 
 - Window opens, redesigned UI renders
 - Sample data loaded from `webview/state.py` (William Miller etc.)
-- Seat selection (click a seat)
-- Panel tabs 1/2/3
-- Light/Dark toggle (and full Tweaks panel: accent, type, density, radius)
-- File / Settings / Help menu dropdowns (commands show a toast — see below)
+- **Add / Edit / Remove juror** — modal dialog with name, age, keywords, notes
+- **Drag-and-drop seating** — drag any juror onto a seat to assign; drop on
+  the Preliminary Pool pane to unseat
+- **Status changes** — pill row in Juror Details panel covers Seated,
+  Excused, Def. Strike, Pro. Strike, Both Struck, Final, Unseat
+- **Priority arrows** — ▲▲▲ to ▼▼▼, click to set rating (-3..+3), "—" clears
+- **Keywords + notes** — saved per juror on blur
+- **Auto Seat** — fills empty seats on active panel from the pool
+- **Reset** — wipes all jurors (with confirmation)
+- Panel tabs 1/2/3 · Light/Dark toggle · full Tweaks panel
 
-## What's stubbed (Stage 2+)
+## What's stubbed (Stage 3+)
 
 The action buttons and File menu commands all show a "coming soon" toast
 right now.  Each one maps to existing logic in your `app/` package — the
@@ -59,10 +65,9 @@ plan is to wire them in stages so you can push working increments:
 
 | Stage | Wires in                                                       |
 |-------|----------------------------------------------------------------|
-| 2     | Add / Edit / Remove juror · drag-to-seat · status changes      |
 | 3     | Save / Open / Autosave (reuses `app/_fileio.py`) · CSV upload  |
 |       | · PDF export (reuses `app/pdf_export.py`)                      |
-| 4     | Preferences dialog · rich-text notes editor                    |
+| 4     | Preferences dialog · rich-text notes editor (uses `app/richtext.py`) |
 
 ## Packaging for distribution
 

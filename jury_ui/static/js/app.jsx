@@ -70,8 +70,10 @@ function JuryApp() {
   const [corner, setCorner]                = React.useState("TL");
   const [activePanel, setActivePanel]      = React.useState(1);
   const [selectedSeat, setSelectedSeat]    = React.useState(null);
+  const [selectedJid, setSelectedJid]      = React.useState(null);
   const [selectedFinal, setSelectedFinal]  = React.useState(null);
   const [toast, setToast]                  = React.useState(null);
+  const [modal, setModal]                  = React.useState(null); // {kind: 'add'|'edit'|'confirmRemove', juror?}
 
   // Initial state from Python (or sample fallback).
   React.useEffect(() => {
@@ -91,17 +93,106 @@ function JuryApp() {
   }, []);
 
   const selectedJuror = React.useMemo(() => {
+    if (selectedJid != null) return jurors.find(j => j.id === selectedJid);
     return jurors.find(j => j.seat === selectedSeat && j.panel === activePanel);
-  }, [jurors, selectedSeat, activePanel]);
+  }, [jurors, selectedJid, selectedSeat, activePanel]);
+
+  // Apply mutation results from Python.
+  const applyResult = (r) => {
+    if (!r) return;
+    if (r.state) {
+      setJurors(r.state.jurors || []);
+    }
+    if (r.ok === false && r.msg) showToast(r.msg);
+  };
 
   const handleSelectSeat = (seatNo) => {
     setSelectedSeat(seatNo);
+    setSelectedJid(null);
     pyCall("select_seat", activePanel, seatNo);
   };
 
   const handleSelectJid = (jid) => {
+    setSelectedJid(jid);
     const j = jurors.find(x => x.id === jid);
     if (j && j.seat) setSelectedSeat(j.seat);
+  };
+
+  // Drag a juror onto a seat — assigns or swaps.
+  const handleDropOnSeat = async (jid, seatNo) => {
+    const r = await pyCall("assign_seat", jid, activePanel, seatNo);
+    applyResult(r);
+    setSelectedSeat(seatNo);
+    setSelectedJid(null);
+  };
+
+  // Drag a juror onto the Preliminary Pool pane — unseat.
+  const handleUnseatDrop = async (jid) => {
+    const r = await pyCall("unseat", jid);
+    applyResult(r);
+  };
+
+  // Detail-panel handlers.
+  const handleSetStatus = async (jid, status) => {
+    const r = await pyCall("set_status", jid, status);
+    applyResult(r);
+  };
+  const handleSetRating = async (jid, rating) => {
+    const r = await pyCall("set_rating", jid, rating);
+    applyResult(r);
+  };
+  const handleMarkFinal = async (jid) => {
+    const r = await pyCall("mark_final", jid);
+    applyResult(r);
+  };
+  const handleUnmarkFinal = async (jid) => {
+    const r = await pyCall("unmark_final", jid);
+    applyResult(r);
+  };
+  const handleSaveKeywords = async (jid, kw) => {
+    const r = await pyCall("set_keywords", jid, kw);
+    applyResult(r);
+  };
+  const handleSaveNotes = async (jid, n) => {
+    const r = await pyCall("set_notes", jid, n);
+    applyResult(r);
+  };
+  const handleUnseat = async (jid) => {
+    const r = await pyCall("unseat", jid);
+    applyResult(r);
+  };
+
+  // Left-column action buttons.
+  const handleAction = async (kind) => {
+    switch (kind) {
+      case "Add juror":
+        setModal({ kind: "add" });
+        return;
+      case "Edit juror":
+        if (!selectedJuror) { showToast("Select a juror first"); return; }
+        setModal({ kind: "edit", juror: selectedJuror });
+        return;
+      case "Remove juror":
+        if (!selectedJuror) { showToast("Select a juror first"); return; }
+        setModal({ kind: "confirmRemove", juror: selectedJuror });
+        return;
+      case "Auto Seat": {
+        const r = await pyCall("auto_seat");
+        applyResult(r);
+        showToast("Auto-seated pool jurors");
+        return;
+      }
+      case "Reset":
+        setModal({ kind: "confirmReset" });
+        return;
+      case "Save":
+      case "Upload CSV":
+      case "Export PDF":
+        showToast(kind + " — Stage 3");
+        return;
+      default:
+        showToast(kind);
+    }
   };
 
   const handleSetPanel = (n) => {
@@ -155,13 +246,17 @@ function JuryApp() {
           onSelect={handleSelectJid}
           theme={t.theme}
           onToggleTheme={() => setTweak("theme", t.theme === "dark" ? "light" : "dark")}
-          onAction={(a) => showToast(a + " — Stage 2")}
+          onAction={handleAction}
+          onUnseatDrop={handleUnseatDrop}
         />
 
         <main className="col col-center">
           <ControlBar
             rows={rows} cols={cols} jurySize={jurySize} corner={corner}
-            setRows={setRows} setCols={setCols} setJurySize={setJurySize} setCorner={setCorner}
+            setRows={(v) => { setRows(v); pyCall("set_grid", v, cols, jurySize, corner); }}
+            setCols={(v) => { setCols(v); pyCall("set_grid", rows, v, jurySize, corner); }}
+            setJurySize={(v) => { setJurySize(v); pyCall("set_grid", rows, cols, v, corner); }}
+            setCorner={(v) => { setCorner(v); pyCall("set_grid", rows, cols, jurySize, v); }}
             activePanel={activePanel} setActivePanel={handleSetPanel}
             theme={t.theme} setTheme={v => setTweak("theme", v)}
           />
@@ -172,9 +267,20 @@ function JuryApp() {
             jurors={jurors.filter(j => j.panel === activePanel)}
             selectedSeat={selectedSeat}
             onSelectSeat={handleSelectSeat}
+            onDropJuror={handleDropOnSeat}
           />
 
-          <DetailEditor juror={selectedJuror} panel={activePanel}/>
+          <DetailEditor
+            juror={selectedJuror}
+            panel={activePanel}
+            onSaveKeywords={handleSaveKeywords}
+            onSaveNotes={handleSaveNotes}
+            onSetStatus={handleSetStatus}
+            onSetRating={handleSetRating}
+            onMarkFinal={handleMarkFinal}
+            onUnmarkFinal={handleUnmarkFinal}
+            onUnseat={handleUnseat}
+          />
         </main>
 
         <RightColumn
@@ -189,6 +295,62 @@ function JuryApp() {
       <TweaksUI t={t} setTweak={setTweak}/>
 
       {toast && <div className="toast">{toast}</div>}
+
+      {modal?.kind === "add" && (
+        <JurorFormModal
+          mode="add"
+          onSubmit={async (fields) => {
+            const r = await pyCall("add_juror", fields.name, fields.age, fields.notes, fields.keywords);
+            applyResult(r);
+            setModal(null);
+            showToast("Added " + fields.name);
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "edit" && (
+        <JurorFormModal
+          mode="edit"
+          initial={modal.juror}
+          onSubmit={async (fields) => {
+            const r = await pyCall("edit_juror", modal.juror.id, fields);
+            applyResult(r);
+            setModal(null);
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "confirmRemove" && (
+        <ConfirmModal
+          title="Remove juror"
+          message={`Remove juror #${modal.juror.id} (${modal.juror.name}) from this jury? This cannot be undone.`}
+          confirmLabel="Remove"
+          danger
+          onConfirm={async () => {
+            const r = await pyCall("remove_juror", modal.juror.id);
+            applyResult(r);
+            setSelectedJid(null);
+            showToast("Removed " + modal.juror.name);
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "confirmReset" && (
+        <ConfirmModal
+          title="Reset jury"
+          message="Remove all jurors and clear seating? This cannot be undone."
+          confirmLabel="Reset everything"
+          danger
+          onConfirm={async () => {
+            const r = await pyCall("reset");
+            applyResult(r);
+            setSelectedSeat(null);
+            setSelectedJid(null);
+            showToast("Cleared all jurors");
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

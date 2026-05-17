@@ -10,11 +10,17 @@ function SectionTitle({ kind, children, count }) {
   );
 }
 
-function JurorRow({ juror, tone, onClick, selected }) {
+function JurorRow({ juror, tone, onClick, selected, draggable }) {
   return (
     <button
       className={"jrow tone-" + tone + (selected ? " is-selected" : "")}
       onClick={onClick}
+      draggable={!!draggable}
+      onDragStart={(e) => {
+        if (!draggable) return;
+        e.dataTransfer.setData("text/plain", String(juror.id));
+        e.dataTransfer.effectAllowed = "move";
+      }}
     >
       <span className="jrow-id">#{juror.id}</span>
       <span className="jrow-name">{juror.name}</span>
@@ -32,7 +38,7 @@ function FinalJurorRow({ juror, idx }) {
   );
 }
 
-function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction }) {
+function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop }) {
   const pool       = jurors.filter(j => j.status === "pool");
   const excused    = jurors.filter(j => j.status === "excused");
   const defStruck  = jurors.filter(j => j.status === "struck_def");
@@ -41,13 +47,26 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
 
   const act = onAction || (() => {});
 
+  const [poolDragOver, setPoolDragOver] = React.useState(false);
+  const poolDropProps = {
+    onDragOver: (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setPoolDragOver(true); },
+    onDragLeave: () => setPoolDragOver(false),
+    onDrop: (e) => {
+      e.preventDefault();
+      setPoolDragOver(false);
+      const jid = parseInt(e.dataTransfer.getData("text/plain"), 10);
+      if (!Number.isNaN(jid)) onUnseatDrop && onUnseatDrop(jid);
+    },
+  };
+
   return (
     <aside className="col col-left">
-      <section className="pane pane-pool">
+      <section className={"pane pane-pool" + (poolDragOver ? " is-drag-over" : "")} {...poolDropProps}>
         <SectionTitle kind="pool" count={pool.length}>Preliminary Pool</SectionTitle>
         <div className="pane-body scroll">
           {pool.map(j => (
-            <JurorRow key={j.id} juror={j} tone="neutral" onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="neutral" draggable
+                      onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
           ))}
           {pool.length === 0 && <div className="pane-empty">— no jurors —</div>}
         </div>
@@ -76,7 +95,7 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
         <SectionTitle kind="excused" count={excused.length}>Excused</SectionTitle>
         <div className="pane-body scroll">
           {excused.map(j => (
-            <JurorRow key={j.id} juror={j} tone="excused" onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="excused" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
           ))}
         </div>
       </section>
@@ -85,7 +104,7 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
         <SectionTitle kind="struck-def" count={defStruck.length}>Defense Struck</SectionTitle>
         <div className="pane-body scroll">
           {defStruck.map(j => (
-            <JurorRow key={j.id} juror={j} tone="struck" onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="struck" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
           ))}
         </div>
       </section>
@@ -94,7 +113,7 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
         <SectionTitle kind="struck-pro" count={proStruck.length}>Prosecution Struck</SectionTitle>
         <div className="pane-body scroll">
           {proStruck.map(j => (
-            <JurorRow key={j.id} juror={j} tone="struck" onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="struck" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
           ))}
         </div>
       </section>
@@ -103,7 +122,7 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
         <SectionTitle kind="struck-both" count={bothStruck.length}>Both Struck</SectionTitle>
         <div className="pane-body scroll">
           {bothStruck.map(j => (
-            <JurorRow key={j.id} juror={j} tone="struck-both" onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="struck-both" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
           ))}
           {bothStruck.length === 0 && <div className="pane-empty">—</div>}
         </div>
