@@ -1252,3 +1252,95 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* Make the prefs modal a bit wider than the default 440px */
 .modal-backdrop:has(.prefs) .modal { width: 640px; }
+
+/* ── Help modal ─────────────────────────────────────────────────────────────── */
+
+.modal-help { width: 560px; }
+
+.help-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-pane-2);
+  padding: 0 12px;
+  gap: 2px;
+}
+.help-tab {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--txt-2);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color .12s, border-color .12s;
+  margin-bottom: -1px;
+}
+.help-tab:hover { color: var(--txt); }
+.help-tab.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.help-body { max-height: 420px; overflow-y: auto; }
+
+/* Quick Start steps */
+.help-steps { display: flex; flex-direction: column; gap: 14px; }
+.help-step { display: flex; gap: 12px; align-items: flex-start; }
+.help-step-num {
+  flex: 0 0 24px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.help-step-body { flex: 1; }
+.help-step-title { font-size: 13px; font-weight: 600; color: var(--txt); margin-bottom: 2px; }
+.help-step-desc  { font-size: 12.5px; color: var(--txt-2); line-height: 1.5; }
+
+/* Shortcuts */
+.help-shortcuts { display: flex; flex-direction: column; gap: 18px; }
+.help-shortcut-group {}
+.help-shortcut-heading {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--txt-2);
+  margin-bottom: 8px;
+}
+.help-shortcut-table { border-collapse: collapse; width: 100%; }
+.help-shortcut-table tr + tr td { padding-top: 6px; }
+.help-shortcut-table td { padding: 0 0 0 0; vertical-align: middle; }
+.help-shortcut-table td:first-child { width: 160px; }
+.kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-pane-2);
+  border: 1px solid var(--line);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--txt);
+  white-space: nowrap;
+}
+.help-shortcut-desc { font-size: 13px; color: var(--txt-2); padding-left: 12px; }
+
+/* About */
+.help-about {
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  padding: 12px 0 8px;
+  gap: 6px;
+}
+.help-about-logo { color: var(--accent); margin-bottom: 4px; }
+.help-about-name { font-size: 17px; font-weight: 700; color: var(--txt); }
+.help-about-version { font-size: 12px; color: var(--txt-2); }
+.help-about-publisher { font-size: 12.5px; color: var(--txt-2); }
+.help-about-divider {
+  width: 40px; height: 1px;
+  background: var(--line);
+  margin: 8px 0;
+}
+.help-about-desc {
+  font-size: 13px; color: var(--txt-2);
+  line-height: 1.55; max-width: 380px;
+  margin: 0;
+}

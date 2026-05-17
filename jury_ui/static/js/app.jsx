@@ -217,6 +217,27 @@ function JuryApp() {
     pyCall("set_active_panel", n);
   };
 
+  // Global keyboard shortcuts.
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "F1") {
+        e.preventDefault();
+        setModal(m => m ? null : { kind: "help", tab: "quickstart" });
+        return;
+      }
+      if (!e.ctrlKey && !e.metaKey) return;
+      switch (e.key) {
+        case "s": e.preventDefault(); e.shiftKey ? handleAction("Save As") : handleAction("Save"); break;
+        case "o": e.preventDefault(); handleAction("Open"); break;
+        case ",": e.preventDefault();
+          pyCall("get_settings").then(s => { if (s) setModal({ kind: "prefs", initial: s }); });
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // Apply CSS vars from tweaks.
   React.useEffect(() => {
     const root = document.documentElement;
@@ -254,7 +275,9 @@ function JuryApp() {
                           if (s) setModal({ kind: "prefs", initial: s });
                           else showToast("Preferences unavailable (no pywebview)");
                         },
-          about:      () => showToast("Jury Selection Tool · Stage 4 preview"),
+          quickstart: () => setModal({ kind: "help", tab: "quickstart" }),
+          shortcuts:  () => setModal({ kind: "help", tab: "shortcuts"  }),
+          about:      () => setModal({ kind: "help", tab: "about"      }),
           exit:       () => pyCall("exit_app"),
         };
         (handlers[cmd] || (() => {}))();
@@ -386,6 +409,12 @@ function JuryApp() {
           onClose={() => setModal(null)}
         />
       )}
+      {modal?.kind === "help" && (
+        <HelpModal
+          initialTab={modal.tab}
+          onClose={() => setModal(null)}
+        />
+      )}
       {modal?.kind === "prefs" && (
         <PreferencesModal
           initial={modal.initial}
@@ -493,7 +522,10 @@ function MenuBar({ onCommand }) {
         <button className={"menu-item" + (open === "help" ? " is-open" : "")}
                 onClick={() => setOpen(open === "help" ? null : "help")}>Help</button>
         {open === "help" && <Drop items={[
-          {label:"About",             cmd:"about"},
+          {label:"Quick Start",        cmd:"quickstart"},
+          {label:"Keyboard Shortcuts", cmd:"shortcuts"},
+          "-",
+          {label:"About",              cmd:"about"},
         ]}/>}
       </div>
 
