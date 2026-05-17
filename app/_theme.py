@@ -1,5 +1,6 @@
 from __future__ import annotations
 import tkinter as tk
+import tkinter.ttk as ttk
 
 from .colors import C, DARK, LIGHT
 from .config import SETTINGS
@@ -22,12 +23,29 @@ class ThemeMixin:
             self._fj_det_notes_text.config(state="disabled")
         self._redraw()
 
+    def _configure_scrollbar_style(self):
+        s = self._ttk_style
+        for orient in ("Vertical", "Horizontal"):
+            s.configure(f"{orient}.TScrollbar",
+                background=C["btn_bg"],
+                troughcolor=C["input_bg"],
+                arrowcolor=C["txt_secondary"],
+                borderwidth=0,
+                relief="flat",
+                arrowsize=12,
+            )
+            s.map(f"{orient}.TScrollbar",
+                background=[("active", C["btn_hover"]), ("disabled", C["btn_bg"])],
+                arrowcolor=[("disabled", C["txt_muted"])],
+            )
+
     def _apply_theme(self, name: str):
         old = dict(C)
         C.update(DARK if name == "dark" else LIGHT)
         self._theme_name = name
         color_map = {old[k]: C[k] for k in C if old.get(k) != C.get(k)}
         self._retheme_widget(self, color_map)
+        self._configure_scrollbar_style()
         self.canvas.configure(bg=C["canvas_bg"])
         self._update_theme_buttons()
         self._redraw()

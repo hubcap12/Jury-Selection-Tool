@@ -1,5 +1,6 @@
 from __future__ import annotations
 import tkinter as tk
+import tkinter.ttk as ttk
 from tkinter import messagebox
 
 from .colors import C, LIGHT
@@ -59,6 +60,10 @@ class JuryApp(
         self.SW:   int = SETTINGS["seat_width"]
         self.SH:   int = SETTINGS["seat_height"]
         self.SGAP: int = SETTINGS["seat_gap"]
+
+        self._ttk_style = ttk.Style(self)
+        self._ttk_style.theme_use("clam")
+        self._configure_scrollbar_style()
 
         self._autosave_id:    str | None        = None
         self._drag_id:        int | None        = None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import tkinter as tk
+import tkinter.ttk as ttk
 import tkinter.font as tkfont
 from tkinter import filedialog
 
@@ -84,10 +85,7 @@ class SettingsDlgMixin:
             outer.columnconfigure(0, weight=1)
 
             cv  = tk.Canvas(outer, bg=C["bg"], highlightthickness=0)
-            vsb = tk.Scrollbar(outer, orient="vertical", command=cv.yview,
-                               bg=C["btn_bg"], troughcolor=C["input_bg"],
-                               activebackground=C["btn_hover"],
-                               highlightthickness=0, relief="flat", bd=0)
+            vsb = ttk.Scrollbar(outer, orient="vertical", command=cv.yview)
             cv.configure(yscrollcommand=vsb.set)
             cv.grid(row=0, column=0, sticky="nsew")
 
