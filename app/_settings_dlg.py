@@ -22,7 +22,7 @@ class SettingsDlgMixin:
         dlg = tk.Toplevel(self)
         dlg.title("Preferences")
         dlg.resizable(True, True)
-        dlg.minsize(380, 400)
+        dlg.minsize(580, 400)
         dlg.transient(self)
         dlg.configure(bg=C["bg"])
         dlg.withdraw()
@@ -483,6 +483,15 @@ class SettingsDlgMixin:
             _color_edits[v_edit_theme.get()].clear()
             _build_color_grid()
 
+        def _apply_colors():
+            SETTINGS["dark_colors"]  = dict(_color_edits["dark"])
+            SETTINGS["light_colors"] = dict(_color_edits["light"])
+            self._apply_theme(self._theme_name)
+
+        def _save_colors():
+            _apply_colors()
+            _save_settings(SETTINGS)
+
         tsf = tk.Frame(at, bg=C["bg"])
         tsf.grid(row=r, column=0, columnspan=3, sticky="ew", padx=10, pady=(4, 0))
         tsf.columnconfigure(1, weight=1)
@@ -495,12 +504,23 @@ class SettingsDlgMixin:
                            bg=C["bg"], fg=C["txt_dark"], selectcolor=C["btn_bg"],
                            activebackground=C["bg"], font=_dlg_fonts["md"],
                            command=_build_color_grid).pack(side="left", padx=(0, 10))
-        tk.Button(tsf, text="Reset to Default", cursor="hand2",
-                  bg=C["btn_bg"], fg=C["btn_fg"], relief="solid", bd=1,
-                  highlightthickness=0, activebackground=C["btn_hover"],
-                  activeforeground=C["txt_light"], font=_dlg_fonts["sm"],
-                  padx=6, pady=2, command=_reset_colors
-                  ).grid(row=0, column=2, sticky="e", padx=(0, 10))
+        _btn_kw = dict(cursor="hand2", relief="solid", bd=1, highlightthickness=0,
+                       font=_dlg_fonts["sm"], padx=6, pady=2)
+        tk.Button(tsf, text="Apply Colors",
+                  bg=C["btn_bg"], fg=C["btn_fg"],
+                  activebackground=C["btn_hover"], activeforeground=C["txt_light"],
+                  command=_apply_colors, **_btn_kw
+                  ).grid(row=0, column=2, sticky="e", padx=(0, 4))
+        tk.Button(tsf, text="Save Colors",
+                  bg=C["seat_seated"], fg=C["txt_light"],
+                  activebackground=C["primary_active"], activeforeground=C["txt_light"],
+                  command=_save_colors, **_btn_kw
+                  ).grid(row=0, column=3, sticky="e", padx=(0, 4))
+        tk.Button(tsf, text="Reset to Default",
+                  bg=C["btn_bg"], fg=C["btn_fg"],
+                  activebackground=C["btn_hover"], activeforeground=C["txt_light"],
+                  command=_reset_colors, **_btn_kw
+                  ).grid(row=0, column=4, sticky="e", padx=(0, 10))
         r += 1
 
         _cgrid = tk.Frame(at, bg=C["bg"])
@@ -845,7 +865,7 @@ class SettingsDlgMixin:
                   font=_dlg_fonts["md"], padx=8, pady=4, cursor="hand2").pack(side="right", padx=(0, 4))
 
         dlg.update_idletasks()
-        dw = dlg.winfo_reqwidth()
+        dw = max(580, dlg.winfo_reqwidth())
         dh = int(dlg.winfo_reqheight() * 1.5)
         x = self.winfo_rootx() + (self.winfo_width()  - dw) // 2
         y = self.winfo_rooty() + (self.winfo_height() - dh) // 2
