@@ -84,7 +84,10 @@ class SettingsDlgMixin:
             outer.columnconfigure(0, weight=1)
 
             cv  = tk.Canvas(outer, bg=C["bg"], highlightthickness=0)
-            vsb = tk.Scrollbar(outer, orient="vertical", command=cv.yview)
+            vsb = tk.Scrollbar(outer, orient="vertical", command=cv.yview,
+                               bg=C["btn_bg"], troughcolor=C["input_bg"],
+                               activebackground=C["btn_hover"],
+                               highlightthickness=0, relief="flat", bd=0)
             cv.configure(yscrollcommand=vsb.set)
             cv.grid(row=0, column=0, sticky="nsew")
 
