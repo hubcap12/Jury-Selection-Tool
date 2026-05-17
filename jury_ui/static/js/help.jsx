@@ -119,7 +119,7 @@ function HelpAbout() {
         </svg>
       </div>
       <div className="help-about-name">Jury Selection Tool</div>
-      <div className="help-about-version">Version 1.1.0</div>
+      <div className="help-about-version">Version 2.0.0</div>
       <div className="help-about-publisher">Cole Mason</div>
       <div className="help-about-divider"></div>
       <p className="help-about-desc">

@@ -124,8 +124,7 @@ function ControlBar({
 
 function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
                        onSetRating, onMarkFinal, onUnmarkFinal, onUnseat }) {
-  // Local edit state — saves to Python on blur so we don't ping on every keystroke.
-  const [kw, setKw]     = React.useState("");
+  const [kw, setKw]       = React.useState("");
   const [notes, setNotes] = React.useState("");
 
   React.useEffect(() => {
@@ -133,17 +132,9 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
     setNotes(juror?.notes || "");
   }, [juror?.id]);
 
-  if (!juror) {
-    return (
-      <section className="detail">
-        <div className="detail-tab">Juror Details</div>
-        <div className="detail-empty">Select a seat or pool juror to see details.</div>
-      </section>
-    );
-  }
-
-  const status = juror.status || "seated";
+  const status  = juror?.status || "seated";
   const isFinal = status === "final";
+  const dimmed  = !juror;
 
   const Status = ({ value, label, tone }) => (
     <button
@@ -157,17 +148,23 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
       <div className="detail-tab">Juror Details</div>
 
       <div className="detail-head">
-        {juror.seat && <span className="chip chip-panel">Panel {panel}</span>}
-        {juror.seat && <span className="chip chip-seat">Seat {juror.seat}</span>}
-        {!juror.seat && <span className="chip chip-pool">Pool</span>}
-        <span className="detail-sep">—</span>
-        <span className="detail-jid">Juror #{juror.id}</span>
-        <span className="detail-name">{juror.name}</span>
-        <span className="detail-sep">·</span>
-        <span className="detail-age">Age {juror.age}</span>
+        {juror ? (
+          <>
+            {juror.seat  && <span className="chip chip-panel">Panel {panel}</span>}
+            {juror.seat  && <span className="chip chip-seat">Seat {juror.seat}</span>}
+            {!juror.seat && <span className="chip chip-pool">Pool</span>}
+            <span className="detail-sep">—</span>
+            <span className="detail-jid">Juror #{juror.id}</span>
+            <span className="detail-name">{juror.name}</span>
+            <span className="detail-sep">·</span>
+            <span className="detail-age">Age {juror.age}</span>
+          </>
+        ) : (
+          <span className="detail-empty">Select a seat or pool juror to see details.</span>
+        )}
       </div>
 
-      <div className="detail-grid">
+      <div className={"detail-grid" + (dimmed ? " detail-dimmed" : "")}>
         <label className="detail-label">Status:</label>
         <div className="status-row">
           <Status value="seated"      label="Seated"      tone="seated"/>
@@ -178,8 +175,8 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
           <button
             className={"status-pill tone-final" + (isFinal ? " is-active" : "")}
             onClick={() => isFinal ? onUnmarkFinal(juror.id) : onMarkFinal(juror.id)}
-          >{isFinal ? `Final #${juror.finalNo}` : "Final"}</button>
-          {juror.seat && (
+          >{isFinal ? `Final #${juror?.finalNo}` : "Final"}</button>
+          {juror?.seat && (
             <button className="status-pill tone-neutral" onClick={() => onUnseat(juror.id)} title="Return to pool">
               Unseat
             </button>
@@ -190,7 +187,7 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
         <input className="input"
                value={kw}
                onChange={(e) => setKw(e.target.value)}
-               onBlur={() => onSaveKeywords && onSaveKeywords(juror.id, kw)}
+               onBlur={() => juror && onSaveKeywords && onSaveKeywords(juror.id, kw)}
                placeholder="Add keywords…"/>
 
         <label className="detail-label detail-label-top">Notes:</label>
@@ -198,22 +195,23 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
           value={notes}
           placeholder="Type notes…"
           onSave={(n) => {
+            if (!juror) return;
             setNotes(n);
             onSaveNotes && onSaveNotes(juror.id, n);
           }}
         />
       </div>
 
-      <div className="detail-priority">
+      <div className={"detail-priority" + (dimmed ? " detail-dimmed" : "")}>
         <label className="detail-label">Priority:</label>
         <div className="priority-row">
-          <button className={"prio-btn prio-up3"   + (juror.rating ===  3 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  3)}>▲▲▲</button>
-          <button className={"prio-btn prio-up2"   + (juror.rating ===  2 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  2)}>▲▲</button>
-          <button className={"prio-btn prio-up1"   + (juror.rating ===  1 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  1)}>▲</button>
-          <button className={"prio-btn prio-clear" + (juror.rating ===  0 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  0)} title="Clear priority">—</button>
-          <button className={"prio-btn prio-down1" + (juror.rating === -1 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -1)}>▼</button>
-          <button className={"prio-btn prio-down2" + (juror.rating === -2 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -2)}>▼▼</button>
-          <button className={"prio-btn prio-down3" + (juror.rating === -3 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -3)}>▼▼▼</button>
+          <button className={"prio-btn prio-up3"   + (juror?.rating ===  3 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  3)}>▲▲▲</button>
+          <button className={"prio-btn prio-up2"   + (juror?.rating ===  2 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  2)}>▲▲</button>
+          <button className={"prio-btn prio-up1"   + (juror?.rating ===  1 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  1)}>▲</button>
+          <button className={"prio-btn prio-clear" + (juror?.rating ===  0 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  0)} title="Clear priority">—</button>
+          <button className={"prio-btn prio-down1" + (juror?.rating === -1 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -1)}>▼</button>
+          <button className={"prio-btn prio-down2" + (juror?.rating === -2 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -2)}>▼▼</button>
+          <button className={"prio-btn prio-down3" + (juror?.rating === -3 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -3)}>▼▼▼</button>
         </div>
       </div>
     </section>
@@ -237,7 +235,7 @@ function StatusBar({ jurors, activePanel, selectedJid }) {
       <span className="status-spacer"></span>
       <span className="status-cell status-cell-muted">Autosave on · every 15 min</span>
       <span className="status-cell status-cell-muted">Panel {activePanel} of 3</span>
-      <span className="status-cell status-cell-muted">v1.4 · PolyForm Noncommercial</span>
+      <span className="status-cell status-cell-muted">v2.0.0 · PolyForm Noncommercial</span>
     </footer>
   );
 }

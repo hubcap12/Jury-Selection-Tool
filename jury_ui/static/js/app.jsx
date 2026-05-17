@@ -74,6 +74,9 @@ function JuryApp() {
   const [selectedFinal, setSelectedFinal]  = React.useState(null);
   const [toast, setToast]                  = React.useState(null);
   const [modal, setModal]                  = React.useState(null); // {kind: 'add'|'edit'|'confirmRemove', juror?}
+  const [ctxMenu, setCtxMenu]              = React.useState(null); // {juror, x, y}
+  const [leftWidth, setLeftWidth]          = React.useState(280);
+  const [rightWidth, setRightWidth]        = React.useState(280);
 
   // Initial state from Python (or sample fallback).
   React.useEffect(() => {
@@ -169,6 +172,30 @@ function JuryApp() {
     applyResult(r);
   };
 
+  const handleContextMenu = (juror, x, y) => setCtxMenu({ juror, x, y });
+
+  const startHDrag = (side, e) => {
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = side === "left" ? leftWidth : rightWidth;
+    const setter = side === "left" ? setLeftWidth : setRightWidth;
+    const sign   = side === "left" ? 1 : -1;
+
+    const onMove = (ev) => {
+      setter(Math.max(160, Math.min(520, w0 + sign * (ev.clientX - x0))));
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",  onUp);
+      document.body.style.cursor     = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor     = "ew-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",  onUp);
+  };
+
   // Left-column action buttons.
   const handleAction = async (kind) => {
     switch (kind) {
@@ -216,6 +243,13 @@ function JuryApp() {
     setActivePanel(n);
     pyCall("set_active_panel", n);
   };
+
+  // Suppress the browser's native context menu globally.
+  React.useEffect(() => {
+    const prevent = (e) => e.preventDefault();
+    document.addEventListener("contextmenu", prevent);
+    return () => document.removeEventListener("contextmenu", prevent);
+  }, []);
 
   // Global keyboard shortcuts.
   React.useEffect(() => {
@@ -292,7 +326,11 @@ function JuryApp() {
           onToggleTheme={() => setTweak("theme", t.theme === "dark" ? "light" : "dark")}
           onAction={handleAction}
           onUnseatDrop={handleUnseatDrop}
+          onJurorContextMenu={handleContextMenu}
+          style={{ width: leftWidth }}
         />
+
+        <div className="hsash" onMouseDown={(e) => startHDrag("left", e)} />
 
         <main className="col col-center">
           <ControlBar
@@ -313,6 +351,7 @@ function JuryApp() {
             selectedSeat={selectedSeat}
             onSelectSeat={handleSelectSeat}
             onDropJuror={handleDropOnSeat}
+            onJurorContextMenu={handleContextMenu}
           />
 
           <DetailEditor
@@ -328,10 +367,14 @@ function JuryApp() {
           />
         </main>
 
+        <div className="hsash" onMouseDown={(e) => startHDrag("right", e)} />
+
         <RightColumn
           jurors={jurors}
           selectedFinalId={selectedFinal}
           onSelectFinal={setSelectedFinal}
+          onJurorContextMenu={handleContextMenu}
+          style={{ width: rightWidth }}
         />
       </div>
 
@@ -426,6 +469,21 @@ function JuryApp() {
           }}
           onPickWorkDir={() => pyCall("pick_work_dir")}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {ctxMenu && (
+        <ContextMenu
+          juror={ctxMenu.juror}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          onSetStatus={(jid, status) => { handleSetStatus(jid, status); }}
+          onSetRating={(jid, rating) => { handleSetRating(jid, rating); }}
+          onMarkFinal={(jid) => { handleMarkFinal(jid); }}
+          onUnmarkFinal={(jid) => { handleUnmarkFinal(jid); }}
+          onUnseat={(jid) => { handleUnseat(jid); }}
+          onEdit={(j) => { setModal({ kind: "edit", juror: j }); }}
         />
       )}
     </div>

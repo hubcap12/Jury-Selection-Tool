@@ -13,7 +13,7 @@ function RatingArrows({ rating }) {
   );
 }
 
-function Seat({ seatNo, juror, selected, onClick, onDropJuror }) {
+function Seat({ seatNo, juror, selected, onClick, onDropJuror, onContextMenu }) {
   const [dragOver, setDragOver] = React.useState(false);
 
   const dropProps = {
@@ -76,6 +76,7 @@ function Seat({ seatNo, juror, selected, onClick, onDropJuror }) {
         e.dataTransfer.setData("text/plain", String(juror.id));
         e.dataTransfer.effectAllowed = "move";
       }}
+      onContextMenu={(e) => { e.preventDefault(); onContextMenu && onContextMenu(juror, e.clientX, e.clientY); }}
       {...dropProps}
     >
       <span className="seat-stripe" aria-hidden="true"></span>
@@ -102,7 +103,7 @@ function seatNum(r, c, rows, cols, corner) {
   }
 }
 
-function SeatGrid({ rows, cols, corner, jurors, selectedSeat, onSelectSeat, onDropJuror }) {
+function SeatGrid({ rows, cols, corner, jurors, selectedSeat, onSelectSeat, onDropJuror, onJurorContextMenu }) {
   const bySeat = {};
   jurors.forEach(j => { if (j.seat) bySeat[j.seat] = j; });
 
@@ -118,6 +119,7 @@ function SeatGrid({ rows, cols, corner, jurors, selectedSeat, onSelectSeat, onDr
           selected={selectedSeat === seatNo}
           onClick={() => onSelectSeat(seatNo)}
           onDropJuror={onDropJuror}
+          onContextMenu={onJurorContextMenu}
         />
       );
     }

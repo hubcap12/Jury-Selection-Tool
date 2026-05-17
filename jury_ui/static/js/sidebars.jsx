@@ -1,5 +1,49 @@
 /* Left + right sidebars  ---------------------------------------------------- */
 
+/* Drag-to-resize sash hook.
+   `initial` = array of flex-grow values, one per resizable pane.
+   `startDrag(aboveIdx, belowIdx, mouseEvent)` — pass null for the fixed side. */
+function useSash(initial) {
+  const colRef = React.useRef(null);
+  const [fracs, setFracs] = React.useState(initial);
+  const fracsRef = React.useRef(fracs);
+  fracsRef.current = fracs;
+
+  const startDrag = (aboveIdx, belowIdx, e) => {
+    e.preventDefault();
+    const y0 = e.clientY;
+    const f0 = [...fracsRef.current];
+    const totalFrac = f0.reduce((a, b) => a + b, 0);
+    const containerH = colRef.current?.clientHeight ?? 600;
+
+    const onMove = (ev) => {
+      const dFrac = ((ev.clientY - y0) / containerH) * totalFrac;
+      const next = [...f0];
+      if (aboveIdx != null) next[aboveIdx] = Math.max(0.08, f0[aboveIdx] + dFrac);
+      if (belowIdx != null) next[belowIdx] = Math.max(0.08, f0[belowIdx] - dFrac);
+      setFracs(next);
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",  onUp);
+      document.body.style.cursor     = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor     = "ns-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",  onUp);
+  };
+
+  return { colRef, fracs, startDrag };
+}
+
+function Sash({ onMouseDown }) {
+  return <div className="sash" onMouseDown={onMouseDown} />;
+}
+
 function SectionTitle({ kind, children, count }) {
   return (
     <div className={"section-title section-" + kind}>
@@ -10,7 +54,7 @@ function SectionTitle({ kind, children, count }) {
   );
 }
 
-function JurorRow({ juror, tone, onClick, selected, draggable }) {
+function JurorRow({ juror, tone, onClick, selected, draggable, onContextMenu }) {
   return (
     <button
       className={"jrow tone-" + tone + (selected ? " is-selected" : "")}
@@ -21,6 +65,7 @@ function JurorRow({ juror, tone, onClick, selected, draggable }) {
         e.dataTransfer.setData("text/plain", String(juror.id));
         e.dataTransfer.effectAllowed = "move";
       }}
+      onContextMenu={(e) => { e.preventDefault(); onContextMenu && onContextMenu(juror, e.clientX, e.clientY); }}
     >
       <span className="jrow-id">#{juror.id}</span>
       <span className="jrow-name">{juror.name}</span>
@@ -38,7 +83,7 @@ function FinalJurorRow({ juror, idx }) {
   );
 }
 
-function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop }) {
+function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop, onJurorContextMenu, style }) {
   const pool       = jurors.filter(j => j.status === "pool");
   const excused    = jurors.filter(j => j.status === "excused");
   const defStruck  = jurors.filter(j => j.status === "struck_def");
@@ -46,6 +91,9 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
   const bothStruck = jurors.filter(j => j.status === "struck_both");
 
   const act = onAction || (() => {});
+
+  // fracs: [pool, excused, defStruck, proStruck, bothStruck]
+  const { colRef, fracs, startDrag } = useSash([1.4, 0.7, 0.7, 0.7, 0.5]);
 
   const [poolDragOver, setPoolDragOver] = React.useState(false);
   const poolDropProps = {
@@ -60,13 +108,15 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
   };
 
   return (
-    <aside className="col col-left">
-      <section className={"pane pane-pool" + (poolDragOver ? " is-drag-over" : "")} {...poolDropProps}>
+    <aside className="col col-left" ref={colRef} style={style}>
+      <section className={"pane pane-pool" + (poolDragOver ? " is-drag-over" : "")}
+               style={{ flex: fracs[0] }} {...poolDropProps}>
         <SectionTitle kind="pool" count={pool.length}>Preliminary Pool</SectionTitle>
         <div className="pane-body scroll">
           {pool.map(j => (
             <JurorRow key={j.id} juror={j} tone="neutral" draggable
-                      onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+                      onClick={() => onSelect(j.id)} selected={selectedJid===j.id}
+                      onContextMenu={onJurorContextMenu}/>
           ))}
           {pool.length === 0 && <div className="pane-empty">— no jurors —</div>}
         </div>
@@ -91,38 +141,50 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
         </div>
       </section>
 
-      <section className="pane pane-excused">
+      <Sash onMouseDown={(e) => startDrag(0, 1, e)} />
+
+      <section className="pane pane-excused" style={{ flex: fracs[1] }}>
         <SectionTitle kind="excused" count={excused.length}>Excused</SectionTitle>
         <div className="pane-body scroll">
           {excused.map(j => (
-            <JurorRow key={j.id} juror={j} tone="excused" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="excused" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}
+                      onContextMenu={onJurorContextMenu}/>
           ))}
         </div>
       </section>
 
-      <section className="pane pane-struck pane-struck-def">
+      <Sash onMouseDown={(e) => startDrag(1, 2, e)} />
+
+      <section className="pane pane-struck pane-struck-def" style={{ flex: fracs[2] }}>
         <SectionTitle kind="struck-def" count={defStruck.length}>Defense Struck</SectionTitle>
         <div className="pane-body scroll">
           {defStruck.map(j => (
-            <JurorRow key={j.id} juror={j} tone="struck" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="struck" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}
+                      onContextMenu={onJurorContextMenu}/>
           ))}
         </div>
       </section>
 
-      <section className="pane pane-struck pane-struck-pro">
+      <Sash onMouseDown={(e) => startDrag(2, 3, e)} />
+
+      <section className="pane pane-struck pane-struck-pro" style={{ flex: fracs[3] }}>
         <SectionTitle kind="struck-pro" count={proStruck.length}>Prosecution Struck</SectionTitle>
         <div className="pane-body scroll">
           {proStruck.map(j => (
-            <JurorRow key={j.id} juror={j} tone="struck" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="struck" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}
+                      onContextMenu={onJurorContextMenu}/>
           ))}
         </div>
       </section>
 
-      <section className="pane pane-struck pane-struck-both">
+      <Sash onMouseDown={(e) => startDrag(3, 4, e)} />
+
+      <section className="pane pane-struck pane-struck-both" style={{ flex: fracs[4] }}>
         <SectionTitle kind="struck-both" count={bothStruck.length}>Both Struck</SectionTitle>
         <div className="pane-body scroll">
           {bothStruck.map(j => (
-            <JurorRow key={j.id} juror={j} tone="struck-both" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}/>
+            <JurorRow key={j.id} juror={j} tone="struck-both" draggable onClick={() => onSelect(j.id)} selected={selectedJid===j.id}
+                      onContextMenu={onJurorContextMenu}/>
           ))}
           {bothStruck.length === 0 && <div className="pane-empty">—</div>}
         </div>
@@ -131,16 +193,19 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
   );
 }
 
-function RightColumn({ jurors, selectedFinalId, onSelectFinal }) {
+function RightColumn({ jurors, selectedFinalId, onSelectFinal, onJurorContextMenu, style }) {
   const finals = jurors
     .filter(j => j.status === "final")
     .sort((a, b) => (a.finalNo || 99) - (b.finalNo || 99));
 
   const selected = finals.find(j => j.id === selectedFinalId) || finals[0];
 
+  // fracs: [finalList, finalInfo]
+  const { colRef, fracs, startDrag } = useSash([1.3, 1.0]);
+
   return (
-    <aside className="col col-right">
-      <section className="pane pane-final">
+    <aside className="col col-right" ref={colRef} style={style}>
+      <section className="pane pane-final" style={{ flex: fracs[0] }}>
         <SectionTitle kind="final" count={finals.length}>Final Jury</SectionTitle>
         <div className="pane-body scroll">
           {finals.map((j, i) => (
@@ -148,6 +213,7 @@ function RightColumn({ jurors, selectedFinalId, onSelectFinal }) {
               key={j.id}
               className={"jrow tone-final" + (selected?.id === j.id ? " is-selected" : "")}
               onClick={() => onSelectFinal(j.id)}
+              onContextMenu={(e) => { e.preventDefault(); onJurorContextMenu && onJurorContextMenu(j, e.clientX, e.clientY); }}
             >
               <span className="jrow-idx">{i + 1}.</span>
               <span className="jrow-id">#{j.id}</span>
@@ -157,7 +223,9 @@ function RightColumn({ jurors, selectedFinalId, onSelectFinal }) {
         </div>
       </section>
 
-      <section className="pane pane-final-info">
+      <Sash onMouseDown={(e) => startDrag(0, 1, e)} />
+
+      <section className="pane pane-final-info" style={{ flex: fracs[1] }}>
         <div className="pane-header-tab">Final Jury Info</div>
         <div className="pane-body">
           {selected ? (
