@@ -100,13 +100,13 @@ class JuryAPI:
 
     # ── Juror CRUD ────────────────────────────────────────────────────────
 
-    def add_juror(self, name: str, age: int | str = 0,
+    def add_juror(self, name: str, age="",
                   notes: str = "", keywords: str = "") -> dict[str, Any]:
         name = (name or "").strip()
         if not name:
             return {"ok": False, "msg": "Name is required"}
         try:
-            age_i = int(age) if age != "" else 0
+            age_i = int(age) if str(age).strip() else 0
         except (TypeError, ValueError):
             age_i = 0
         juror = {
@@ -131,7 +131,7 @@ class JuryAPI:
                 v = fields[k]
                 if k == "age":
                     try:
-                        v = int(v) if v != "" else 0
+                        v = int(v) if str(v).strip() else 0
                     except (TypeError, ValueError):
                         continue
                 j[k] = v
