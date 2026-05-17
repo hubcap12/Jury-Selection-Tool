@@ -5,7 +5,7 @@
 #
 # Differences vs. JuryTool.spec:
 #   • Entry point is jury_v2.py instead of jury.py
-#   • The static folder (webview/static) is bundled as data so pywebview
+#   • The static folder (jury_ui/static) is bundled as data so pywebview
 #     can find index.html / css / js / vendor at runtime.
 #   • Output exe is renamed JuryTool_v2 so both can ship side-by-side.
 
@@ -16,7 +16,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('icon.ico', '.'),
-        ('webview/static', 'webview/static'),
+        ('jury_ui/static', 'jury_ui/static'),
     ],
     hiddenimports=[],
     hookspath=[],

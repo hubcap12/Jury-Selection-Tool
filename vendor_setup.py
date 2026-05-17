@@ -18,7 +18,7 @@ import sys
 import urllib.request
 
 VENDOR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "webview", "static", "js", "vendor")
+                          "jury_ui", "static", "js", "vendor")
 
 # Pinned versions — same SHAs the redesign was tested against.  If you bump
 # these, update the integrity hashes too.

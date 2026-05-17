@@ -28,7 +28,7 @@ jury_development.py
 test_populate.py
 
 # Webview vendored JS (downloaded by vendor_setup.py)
-webview/static/js/vendor/
+jury_ui/static/js/vendor/
 
 # Zip bundles and setup docs
 Jury.zip

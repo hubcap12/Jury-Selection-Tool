@@ -31,7 +31,7 @@ def _resource_path(*parts: str) -> str:
 def _vendor_present() -> bool:
     """Sanity-check that the user has run ``vendor_setup.py``.  If they
     haven't, React/Babel are missing and the UI will be blank."""
-    js_dir = _resource_path("webview", "static", "js", "vendor")
+    js_dir = _resource_path("jury_ui", "static", "js", "vendor")
     needed = ("react.development.js", "react-dom.development.js", "babel.min.js")
     return all(os.path.exists(os.path.join(js_dir, n)) for n in needed)
 
@@ -40,7 +40,7 @@ def run() -> None:
     api = JuryAPI()
     populate_sample(api)  # Stage-1 demo data — replace with real autosave-load in Stage 3.
 
-    html_path = _resource_path("webview", "static", "index.html")
+    html_path = _resource_path("jury_ui", "static", "index.html")
     if not os.path.exists(html_path):
         raise FileNotFoundError(
             f"UI bundle missing — expected {html_path}.  Did you copy the "
