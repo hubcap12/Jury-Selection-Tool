@@ -10,6 +10,7 @@ import webview as pywebview  # pywebview installs as 'webview' module
 from .api import JuryAPI
 from .fileio import Autosaver
 from .state import populate_sample
+from . import settings as _settings
 
 
 def _resource_path(*parts: str) -> str:
@@ -29,18 +30,11 @@ def _vendor_present() -> bool:
     return all(os.path.exists(os.path.join(js_dir, n)) for n in needed)
 
 
-def _default_work_dir() -> str:
-    """Where to put autosave snapshots and where file dialogs open by
-    default.  Use the user's home directory; the original Tk app pulls
-    this from its settings, which we'll wire up in Stage 4."""
-    return os.path.expanduser("~")
-
-
 def run() -> None:
     api = JuryAPI()
-    work_dir = _default_work_dir()
+    work_dir = _settings.work_dir()
     api.set_work_dir(work_dir)
-    populate_sample(api)  # Stage-1 demo data; Stage 3 still seeds initially.
+    populate_sample(api)  # Demo data on first launch; user's autosave/load replaces it.
 
     html_path = _resource_path("jury_ui", "static", "index.html")
     if not os.path.exists(html_path):
@@ -69,11 +63,17 @@ def run() -> None:
     )
     api._bind_window(window)
 
-    # Autosave to rotating snapshots in the work dir, same scheme as
-    # the Tk app.  15-minute interval, keep 3 snapshots.
-    autosaver = Autosaver(api, work_dir=work_dir, interval_min=15, keep=3)
-    autosaver.start()
-    atexit.register(autosaver.stop)
+    # Autosave settings come from the shared ~/.jurytool_settings.json so
+    # they round-trip with the Tk app.  0 = disabled.
+    interval = _settings.autosave_interval_min()
+    autosaver: Autosaver | None = None
+    if interval > 0:
+        autosaver = Autosaver(api, work_dir=work_dir,
+                              interval_min=interval,
+                              keep=_settings.autosave_keep())
+        autosaver.start()
+        atexit.register(autosaver.stop)
+        api._set_autosaver(autosaver)
 
     # debug=True opens devtools — flip to False for shipped builds.
     pywebview.start(debug=False)

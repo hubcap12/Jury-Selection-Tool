@@ -249,8 +249,12 @@ function JuryApp() {
           save_as:    () => handleAction("Save As"),
           export_pdf: () => handleAction("Export PDF"),
           upload_csv: () => handleAction("Upload CSV"),
-          settings:   () => showToast("Settings dialog — Stage 4"),
-          about:      () => showToast("Jury Selection Tool · Stage 3 preview"),
+          settings:   async () => {
+                          const s = await pyCall("get_settings");
+                          if (s) setModal({ kind: "prefs", initial: s });
+                          else showToast("Preferences unavailable (no pywebview)");
+                        },
+          about:      () => showToast("Jury Selection Tool · Stage 4 preview"),
           exit:       () => pyCall("exit_app"),
         };
         (handlers[cmd] || (() => {}))();
@@ -378,6 +382,19 @@ function JuryApp() {
           onConfirm={async (val) => {
             applyResult(await pyCall("export_pdf", val));
           }}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.kind === "prefs" && (
+        <PreferencesModal
+          initial={modal.initial}
+          onSave={async (values) => {
+            const r = await pyCall("update_settings", values);
+            if (r?.ok) showToast("Preferences saved");
+            else showToast(r?.msg || "Failed to save preferences");
+            setModal(null);
+          }}
+          onPickWorkDir={() => pyCall("pick_work_dir")}
           onClose={() => setModal(null)}
         />
       )}

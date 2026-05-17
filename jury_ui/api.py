@@ -29,6 +29,7 @@ class JuryAPI:
         self._window = None
         self._last_save_path: str | None = None
         self._work_dir: str = os.path.expanduser("~")
+        self._autosaver = None  # set by app.run() if autosave is enabled
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -39,6 +40,9 @@ class JuryAPI:
         """Set the directory used for file dialogs and autosave snapshots."""
         if path and os.path.isdir(path):
             self._work_dir = path
+
+    def _set_autosaver(self, autosaver) -> None:
+        self._autosaver = autosaver
 
     # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -411,3 +415,69 @@ class JuryAPI:
         except Exception:
             pass
         return path
+
+    # ── Preferences ───────────────────────────────────────────────────────
+
+    def get_settings(self) -> dict[str, Any]:
+        """Return the current editable settings plus the choice-list
+        constants the UI needs to render dropdowns."""
+        from . import settings as _s
+        return {
+            "values":      _s.snapshot(),
+            "page_sizes":  list(_s.PAGE_SIZE_CHOICES),
+            "pdf_fonts":   list(_s.PDF_FONT_CHOICES),
+            "rte_fonts":   list(_s.RTE_FONT_CHOICES),
+            "corners":     list(_s.CORNER_CHOICES),
+        }
+
+    def update_settings(self, patch: dict[str, Any]) -> dict[str, Any]:
+        """Persist a patch dict.  If autosave-related keys changed, the
+        autosaver is restarted with the new interval."""
+        from . import settings as _s
+        from .fileio import Autosaver
+
+        prev_interval = _s.autosave_interval_min()
+        prev_keep     = _s.autosave_keep()
+        prev_workdir  = _s.work_dir()
+
+        values = _s.update(patch)
+
+        # If work_dir changed, follow it.
+        new_workdir = _s.work_dir()
+        if new_workdir != prev_workdir:
+            self.set_work_dir(new_workdir)
+
+        # Restart autosave if interval / keep / workdir changed.
+        new_interval = _s.autosave_interval_min()
+        new_keep     = _s.autosave_keep()
+        autosave_dirty = (new_interval != prev_interval or
+                          new_keep != prev_keep or
+                          new_workdir != prev_workdir)
+        if autosave_dirty:
+            if self._autosaver is not None:
+                try:
+                    self._autosaver.stop()
+                except Exception:
+                    pass
+                self._autosaver = None
+            if new_interval > 0:
+                a = Autosaver(self, work_dir=new_workdir,
+                              interval_min=new_interval, keep=new_keep)
+                a.start()
+                self._autosaver = a
+
+        return {"ok": True, "values": values}
+
+    def pick_work_dir(self) -> dict[str, Any]:
+        """Native folder picker for the working directory setting."""
+        if self._window is None:
+            return {"ok": False, "msg": "No window"}
+        import webview as pywebview
+        result = self._window.create_file_dialog(
+            pywebview.FOLDER_DIALOG,
+            directory=self._work_dir,
+        )
+        if not result:
+            return {"ok": False, "msg": "Cancelled"}
+        path = result if isinstance(result, str) else result[0]
+        return {"ok": True, "path": path}

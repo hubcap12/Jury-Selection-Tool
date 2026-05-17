@@ -194,33 +194,14 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
                placeholder="Add keywords…"/>
 
         <label className="detail-label detail-label-top">Notes:</label>
-        <div className="notes-wrap">
-          <div className="notes-toolbar">
-            <select className="select select-sm" defaultValue="Segoe UI" disabled>
-              <option>Segoe UI</option>
-              <option>Helvetica</option>
-              <option>Consolas</option>
-              <option>Georgia</option>
-            </select>
-            <select className="select select-sm select-tiny" defaultValue="10" disabled>
-              <option>8</option><option>9</option><option>10</option>
-              <option>11</option><option>12</option><option>14</option>
-            </select>
-            <span className="tb-divider"></span>
-            <button className="tb-btn tb-btn-b" disabled title="Rich-text editor — Stage 4"><b>B</b></button>
-            <button className="tb-btn tb-btn-i" disabled title="Rich-text editor — Stage 4"><i>I</i></button>
-            <button className="tb-btn tb-btn-u" disabled title="Rich-text editor — Stage 4"><u>U</u></button>
-            <span className="tb-divider"></span>
-            <button className="tb-btn" disabled>•</button>
-            <span className="tb-divider"></span>
-            <button className="tb-btn tb-btn-text" disabled>Clear fmt</button>
-          </div>
-          <textarea className="notes-area"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    onBlur={() => onSaveNotes && onSaveNotes(juror.id, notes)}
-                    placeholder="Type notes…"></textarea>
-        </div>
+        <RichTextEditor
+          value={notes}
+          placeholder="Type notes…"
+          onSave={(n) => {
+            setNotes(n);
+            onSaveNotes && onSaveNotes(juror.id, n);
+          }}
+        />
       </div>
 
       <div className="detail-priority">
@@ -229,10 +210,10 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
           <button className={"prio-btn prio-up3"   + (juror.rating ===  3 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  3)}>▲▲▲</button>
           <button className={"prio-btn prio-up2"   + (juror.rating ===  2 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  2)}>▲▲</button>
           <button className={"prio-btn prio-up1"   + (juror.rating ===  1 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  1)}>▲</button>
+          <button className={"prio-btn prio-clear" + (juror.rating ===  0 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  0)} title="Clear priority">—</button>
           <button className={"prio-btn prio-down1" + (juror.rating === -1 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -1)}>▼</button>
           <button className={"prio-btn prio-down2" + (juror.rating === -2 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -2)}>▼▼</button>
           <button className={"prio-btn prio-down3" + (juror.rating === -3 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -3)}>▼▼▼</button>
-          <button className={"prio-btn prio-clear" + (juror.rating ===  0 ? " is-active" : "")} onClick={() => onSetRating(juror.id,  0)} title="Clear priority">—</button>
         </div>
       </div>
     </section>

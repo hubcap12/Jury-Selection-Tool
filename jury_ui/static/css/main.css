@@ -1128,3 +1128,127 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .form-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-softer); }
 .input-num { max-width: 100px; }
+
+/* ── Stage-4: Rich-text editor ───────────────────────────────────────────── */
+
+.rte {
+  background: var(--bg-input);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.rte-toolbar {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 8px;
+  background: linear-gradient(180deg, var(--bg-pane-2), transparent);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.rte-btn {
+  height: 24px; min-width: 26px;
+  padding: 0 6px;
+  border-radius: 3px;
+  color: var(--txt-2);
+  font-size: 12.5px;
+}
+.rte-btn:hover { background: var(--line); color: var(--txt); }
+.rte-btn.is-active {
+  background: var(--accent-softer);
+  color: var(--accent);
+}
+.rte-btn-text { font-size: 11.5px; font-weight: 500; }
+.rte-sep { width: 1px; height: 16px; background: var(--line-2); margin: 0 2px; }
+
+.rte-content {
+  min-height: 76px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  outline: none;
+  color: var(--txt);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.rte-content:focus { outline: none; }
+.rte-content:empty::before {
+  content: attr(data-placeholder);
+  color: var(--txt-4);
+  pointer-events: none;
+}
+.rte-content ul { margin: 4px 0; padding-left: 22px; }
+.rte-content li { margin: 2px 0; }
+.rte-content strong, .rte-content b { font-weight: 700; }
+.rte-content em, .rte-content i    { font-style: italic; }
+.rte-content u                      { text-decoration: underline; }
+
+
+/* ── Stage-4: Preferences modal ─────────────────────────────────────────── */
+
+.prefs { display: flex; flex-direction: column; gap: 14px; }
+.prefs-section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-pane-2);
+  padding: 4px 12px 10px;
+}
+.prefs-section-title {
+  margin: 8px 0 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--txt-3);
+}
+.prefs-section-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+  row-gap: 8px;
+}
+.prefs-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+}
+.prefs-row:has(.prefs-row-path) { grid-column: 1 / -1; }
+.prefs-label {
+  display: flex; flex-direction: column;
+  font-size: 12.5px;
+  color: var(--txt);
+  font-weight: 500;
+  min-width: 0;
+}
+.prefs-hint {
+  font-size: 11px;
+  color: var(--txt-3);
+  font-weight: 400;
+  margin-top: 1px;
+}
+.prefs-control {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prefs-check {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.prefs-row .input,
+.prefs-row .select { min-width: 110px; }
+.prefs-row .input-num { width: 88px; min-width: 0; }
+.prefs-row-path {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.prefs-path-input { flex: 1; min-width: 0; }
+.prefs-pick-btn { flex: 0 0 auto; min-width: 90px; }
+
+/* Make the prefs modal a bit wider than the default 440px */
+.modal-backdrop:has(.prefs) .modal { width: 640px; }
