@@ -1,0 +1,4 @@
+# pywebview backend — uses Edge WebView2 on Windows (already on every Win10/11
+# machine), WKWebView on macOS, GTK WebKit on Linux.  4.4+ is the minimum
+# that supports the `js_api=` + async return pattern this project uses.
+pywebview>=4.4

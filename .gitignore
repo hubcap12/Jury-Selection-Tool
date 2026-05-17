@@ -26,3 +26,11 @@ test.json
 # Development files
 jury_development.py
 test_populate.py
+
+# Webview vendored JS (downloaded by vendor_setup.py)
+webview/static/js/vendor/
+
+# Zip bundles and setup docs
+Jury.zip
+ABOUT_THIS_BUNDLE.txt
+.gitignore.fragment

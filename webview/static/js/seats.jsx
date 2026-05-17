@@ -1,0 +1,99 @@
+/* Seat grid + seat tile  ---------------------------------------------------- */
+
+function RatingArrows({ rating }) {
+  if (!rating) return null;
+  const up = rating > 0;
+  const n = Math.min(3, Math.abs(rating));
+  const glyph = up ? "▲" : "▼";
+  const cls = up ? "rating-up" : "rating-down";
+  return (
+    <span className={"seat-rating " + cls}>
+      {Array.from({ length: n }).map((_, i) => <span key={i}>{glyph}</span>)}
+    </span>
+  );
+}
+
+function Seat({ seatNo, juror, selected, onClick }) {
+  if (!juror) {
+    return (
+      <button className="seat seat-empty" onClick={onClick} aria-label={`Seat ${seatNo}, empty`}>
+        <span className="seat-stripe" aria-hidden="true"></span>
+        <header className="seat-eyebrow">
+          <span className="seat-num">{String(seatNo).padStart(2,"0")}</span>
+          <span className="seat-jid">— · —</span>
+        </header>
+        <div className="seat-name seat-empty-label">empty</div>
+        <div className="seat-age">no juror</div>
+        <footer className="seat-status seat-status-empty">UNASSIGNED</footer>
+      </button>
+    );
+  }
+
+  // Status footer ALWAYS renders so the grid alignment is rock-solid.
+  const statusText =
+    juror.status === "final"       ? `FINAL JUROR #${juror.finalNo}` :
+    juror.status === "excused"     ? "EXCUSED"                       :
+    juror.status === "struck_def"  ? "DEFENSE STRIKE"                :
+    juror.status === "struck_pro"  ? "STATE STRIKE"                  :
+    juror.status === "struck_both" ? "BOTH STRUCK"                   :
+    "SEATED";
+
+  const cls = [
+    "seat",
+    `seat-${juror.status}`,
+    selected ? "is-selected" : "",
+  ].join(" ").trim();
+
+  return (
+    <button className={cls} onClick={onClick}>
+      <span className="seat-stripe" aria-hidden="true"></span>
+      <header className="seat-eyebrow">
+        <span className="seat-num">{String(seatNo).padStart(2,"0")}</span>
+        <span className="seat-eyebrow-right">
+          <RatingArrows rating={juror.rating} />
+          <span className="seat-jid">Juror #{juror.id}</span>
+        </span>
+      </header>
+      <div className="seat-name">{juror.name}</div>
+      <div className="seat-age">Age {juror.age}</div>
+      <footer className={"seat-status seat-status-" + juror.status}>{statusText}</footer>
+    </button>
+  );
+}
+
+function SeatGrid({ rows, cols, jurors, selectedSeat, onSelectSeat }) {
+  const bySeat = {};
+  jurors.forEach(j => { if (j.seat) bySeat[j.seat] = j; });
+
+  const cells = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const seatNo = r * cols + c + 1;
+      cells.push(
+        <Seat
+          key={seatNo}
+          seatNo={seatNo}
+          juror={bySeat[seatNo]}
+          selected={selectedSeat === seatNo}
+          onClick={() => onSelectSeat(seatNo)}
+        />
+      );
+    }
+  }
+
+  return (
+    <div className="seat-grid-wrap">
+      <div
+        className="seat-grid"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+        }}
+      >
+        {cells}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { Seat, SeatGrid, RatingArrows });
