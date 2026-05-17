@@ -4,8 +4,8 @@ from datetime import date, datetime
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from models import Juror, DATE_FMTS
-from richtext import JurorDialog
+from .models import Juror, DATE_FMTS
+from .richtext import JurorDialog
 
 
 class CrudMixin:

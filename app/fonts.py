@@ -34,5 +34,9 @@ def _init_fonts(base: int = 10) -> None:
 
 def _resource_path(relative: str) -> str:
     """Return path to a bundled resource that works both from source and frozen exe."""
-    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    if hasattr(sys, "_MEIPASS"):
+        base = sys._MEIPASS
+    else:
+        # In dev mode app/ is one level below the project root where resources live
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, relative)

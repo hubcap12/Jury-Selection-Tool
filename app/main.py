@@ -2,21 +2,21 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import messagebox
 
-from colors import C, LIGHT
-from config import SETTINGS
-from fonts import FONTS, _init_fonts, _resource_path
-from models import Juror
+from .colors import C, LIGHT
+from .config import SETTINGS
+from .fonts import FONTS, _init_fonts, _resource_path
+from .models import Juror
 
-from app._build        import BuildMixin
-from app._settings_dlg import SettingsDlgMixin
-from app._theme        import ThemeMixin
-from app._panels       import PanelsMixin
-from app._draw         import DrawMixin
-from app._pool         import PoolMixin
-from app._drag         import DragMixin
-from app._detail       import DetailMixin
-from app._crud         import CrudMixin
-from app._fileio       import FileIOMixin
+from ._build        import BuildMixin
+from ._settings_dlg import SettingsDlgMixin
+from ._theme        import ThemeMixin
+from ._panels       import PanelsMixin
+from ._draw         import DrawMixin
+from ._pool         import PoolMixin
+from ._drag         import DragMixin
+from ._detail       import DetailMixin
+from ._crud         import CrudMixin
+from ._fileio       import FileIOMixin
 
 
 class JuryApp(

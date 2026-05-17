@@ -2,10 +2,10 @@ from __future__ import annotations
 import json
 import tkinter as tk
 
-from colors import C
-from fonts import FONTS
-from models import STATUS_DISPLAY
-from richtext import _notes_to_runs, _load_rich_into_text
+from .colors import C
+from .fonts import FONTS
+from .models import STATUS_DISPLAY
+from .richtext import _notes_to_runs, _load_rich_into_text
 
 
 class DetailMixin:

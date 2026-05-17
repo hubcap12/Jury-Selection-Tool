@@ -1,10 +1,10 @@
 from __future__ import annotations
 import tkinter as tk
 
-from colors import C, DARK, LIGHT
-from config import SETTINGS
-from fonts import FONTS, _FONT_DEFS
-from richtext import _load_rich_into_text
+from .colors import C, DARK, LIGHT
+from .config import SETTINGS
+from .fonts import FONTS, _FONT_DEFS
+from .richtext import _load_rich_into_text
 
 
 class ThemeMixin:

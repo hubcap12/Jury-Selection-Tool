@@ -4,10 +4,10 @@ import html
 import json
 import tkinter as tk
 
-from colors import C
-from config import SETTINGS
-from fonts import FONTS
-from models import Juror
+from .colors import C
+from .config import SETTINGS
+from .fonts import FONTS
+from .models import Juror
 
 
 # ── Notes serialisation helpers ───────────────────────────────────────────────

@@ -6,8 +6,8 @@ from tkinter import filedialog, messagebox
 from tkinter.simpledialog import askstring
 import tkinter as tk
 
-from config import SETTINGS
-from richtext import _notes_to_rl_markup
+from .config import SETTINGS
+from .richtext import _notes_to_rl_markup
 
 
 def export_pdf(

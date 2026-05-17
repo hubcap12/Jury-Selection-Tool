@@ -1,1 +1,1 @@
-from app.main import JuryApp
+from .main import JuryApp

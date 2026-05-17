@@ -1,10 +1,10 @@
 from __future__ import annotations
 import tkinter as tk
 
-from colors import C
-from config import SETTINGS
-from fonts import FONTS
-from richtext import RichTextEditor
+from .colors import C
+from .config import SETTINGS
+from .fonts import FONTS
+from .richtext import RichTextEditor
 
 
 class BuildMixin:

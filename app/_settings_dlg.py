@@ -4,10 +4,10 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog
 
-from colors import C
-from config import SETTINGS, DEFAULT_SETTINGS, _save_settings, _load_settings
-from fonts import FONTS
-from richtext import RichTextEditor
+from .colors import C
+from .config import SETTINGS, DEFAULT_SETTINGS, _save_settings, _load_settings
+from .fonts import FONTS
+from .richtext import RichTextEditor
 
 
 class SettingsDlgMixin:

@@ -4,10 +4,10 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from config import SETTINGS
-from fonts import _resource_path
-from models import Juror
-from pdf_export import export_pdf
+from .config import SETTINGS
+from .fonts import _resource_path
+from .models import Juror
+from .pdf_export import export_pdf
 
 
 class FileIOMixin:
@@ -239,7 +239,7 @@ class FileIOMixin:
                     sash_fj=self._sash_coords(self._pane_fj, 1))
 
     def _apply_panel_positions(self, src: dict):
-        from config import DEFAULT_SETTINGS
+        from .config import DEFAULT_SETTINGS
         sw = 6
         snap = dict(src)
         def _do():
