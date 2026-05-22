@@ -78,6 +78,9 @@ function JuryApp() {
   const [ctxMenu, setCtxMenu]              = React.useState(null); // {juror, x, y}
   const [leftWidth, setLeftWidth]          = React.useState(280);
   const [rightWidth, setRightWidth]        = React.useState(280);
+  const [detailHeight, setDetailHeight]    = React.useState(340);
+  const [leftFracs, setLeftFracs]          = React.useState([1.4, 0.7, 0.7, 0.7, 0.5]);
+  const [rightFracs, setRightFracs]        = React.useState([1.3, 1.0]);
 
   // Initial state from Python (or sample fallback).
   React.useEffect(() => {
@@ -94,6 +97,9 @@ function JuryApp() {
       if (s.num_panels)      setNumPanels(s.num_panels);
       if (s.left_col_width)  setLeftWidth(s.left_col_width);
       if (s.right_col_width) setRightWidth(s.right_col_width);
+      if (s.detail_height)   setDetailHeight(s.detail_height);
+      if (Array.isArray(s.left_fracs)  && s.left_fracs.length)  setLeftFracs(s.left_fracs);
+      if (Array.isArray(s.right_fracs) && s.right_fracs.length) setRightFracs(s.right_fracs);
       if (s.selected_seat) setSelectedSeat(s.selected_seat);
       if (s.selected_final) setSelectedFinal(s.selected_final);
     });
@@ -177,6 +183,26 @@ function JuryApp() {
   };
 
   const handleContextMenu = (juror, x, y) => setCtxMenu({ juror, x, y });
+
+  // Vertical drag for the detail (info) panel sash.
+  const startDetailDrag = (e) => {
+    e.preventDefault();
+    const y0 = e.clientY;
+    const h0 = detailHeight;
+    const onMove = (ev) => {
+      setDetailHeight(Math.max(120, Math.min(700, h0 - (ev.clientY - y0))));
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",  onUp);
+      document.body.style.cursor     = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor     = "ns-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",  onUp);
+  };
 
   const startHDrag = (side, e) => {
     e.preventDefault();
@@ -298,8 +324,6 @@ function JuryApp() {
 
   return (
     <div className="app-root">
-      <WindowChrome theme={t.theme}/>
-
       <MenuBar onCommand={(cmd) => {
         const handlers = {
           new:        () => setModal({ kind: "confirmReset" }),
@@ -331,6 +355,7 @@ function JuryApp() {
           onAction={handleAction}
           onUnseatDrop={handleUnseatDrop}
           onJurorContextMenu={handleContextMenu}
+          fracs={leftFracs} setFracs={setLeftFracs}
           style={{ width: leftWidth }}
         />
 
@@ -359,17 +384,21 @@ function JuryApp() {
             onJurorContextMenu={handleContextMenu}
           />
 
-          <DetailEditor
-            juror={selectedJuror}
-            panel={activePanel}
-            onSaveKeywords={handleSaveKeywords}
-            onSaveNotes={handleSaveNotes}
-            onSetStatus={handleSetStatus}
-            onSetRating={handleSetRating}
-            onMarkFinal={handleMarkFinal}
-            onUnmarkFinal={handleUnmarkFinal}
-            onUnseat={handleUnseat}
-          />
+          <div className="sash sash-detail" onMouseDown={startDetailDrag} />
+
+          <div className="detail-wrap" style={{ height: detailHeight }}>
+            <DetailEditor
+              juror={selectedJuror}
+              panel={activePanel}
+              onSaveKeywords={handleSaveKeywords}
+              onSaveNotes={handleSaveNotes}
+              onSetStatus={handleSetStatus}
+              onSetRating={handleSetRating}
+              onMarkFinal={handleMarkFinal}
+              onUnmarkFinal={handleUnmarkFinal}
+              onUnseat={handleUnseat}
+            />
+          </div>
         </main>
 
         <div className="hsash" onMouseDown={(e) => startHDrag("right", e)} />
@@ -379,6 +408,7 @@ function JuryApp() {
           selectedFinalId={selectedFinal}
           onSelectFinal={setSelectedFinal}
           onJurorContextMenu={handleContextMenu}
+          fracs={rightFracs} setFracs={setRightFracs}
           style={{ width: rightWidth }}
         />
       </div>
@@ -482,8 +512,14 @@ function JuryApp() {
           }}
           onPickWorkDir={() => pyCall("pick_work_dir")}
           onSaveLayout={async () => {
-            const r = await pyCall("save_layout", leftWidth, rightWidth);
-            if (r?.ok) showToast("Sidebar widths saved as default");
+            const r = await pyCall("save_layout", {
+              left_col_width:  leftWidth,
+              right_col_width: rightWidth,
+              detail_height:   detailHeight,
+              left_fracs:      leftFracs,
+              right_fracs:     rightFracs,
+            });
+            if (r?.ok) showToast("Layout saved as default");
           }}
           onClose={() => setModal(null)}
         />

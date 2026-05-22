@@ -126,7 +126,7 @@ function PreferencesModal({ initial, onSave, onClose, onPickWorkDir, onSaveLayou
         </PrefsSection>
 
         <PrefsSection title="Layout">
-          <PrefsRow label="Sidebar widths" hint="left & right column widths">
+          <PrefsRow label="All sash positions" hint="column widths, info panel height, sidebar pane sizes">
             <button className="btn btn-default" onClick={onSaveLayout}>
               Save current as default
             </button>

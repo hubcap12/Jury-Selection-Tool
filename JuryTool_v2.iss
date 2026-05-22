@@ -4,7 +4,7 @@
 [Setup]
 AppId={{B7E4D2F1-9C3A-4E8B-A671-2F5E9D1B6C83}
 AppName=Jury Selection Tool
-AppVersion=2.0.1
+AppVersion=2.0.2
 AppPublisher=Cole Mason
 AppPublisherURL=
 DefaultDirName={localappdata}\Programs\JuryTool
@@ -40,28 +40,36 @@ Name: "{userdesktop}\Jury Selection Tool"; Filename: "{app}\JuryTool_v2.exe"; Ta
 Filename: "{app}\JuryTool_v2.exe"; Description: "Launch Jury Selection Tool"; Flags: nowait postinstall skipifsilent
 
 [Code]
-function GetUninstallString(): String;
+function GetUninstallStringFor(const AppGuid: String): String;
 var
   sUnInstPath: String;
   sUnInstallString: String;
 begin
-  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B7E4D2F1-9C3A-4E8B-A671-2F5E9D1B6C83}_is1';
+  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{' + AppGuid + '}_is1';
   sUnInstallString := '';
   if not RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstallString) then
     RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstallString);
   Result := sUnInstallString;
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure UninstallPrior(const AppGuid: String);
 var
   sUnInstallString: String;
   iResultCode: Integer;
 begin
+  sUnInstallString := GetUninstallStringFor(AppGuid);
+  if sUnInstallString <> '' then
+    Exec(RemoveQuotes(sUnInstallString), '/SILENT /NORESTART /SUPPRESSMSGBOXES',
+         '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
   if CurStep = ssInstall then
   begin
-    sUnInstallString := GetUninstallString();
-    if sUnInstallString <> '' then
-      Exec(RemoveQuotes(sUnInstallString), '/SILENT /NORESTART /SUPPRESSMSGBOXES',
-           '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+    { Silently uninstall any previous v2 build }
+    UninstallPrior('B7E4D2F1-9C3A-4E8B-A671-2F5E9D1B6C83');
+    { ...and any v1 build (the Tkinter installer used a different AppId) }
+    UninstallPrior('A3F2C1D8-7B4E-4F9A-B562-1E3D8C0A5F72');
   end;
 end;

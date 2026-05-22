@@ -1,11 +1,11 @@
 /* Left + right sidebars  ---------------------------------------------------- */
 
-/* Drag-to-resize sash hook.
-   `initial` = array of flex-grow values, one per resizable pane.
-   `startDrag(aboveIdx, belowIdx, mouseEvent)` — pass null for the fixed side. */
-function useSash(initial) {
+/* Drag-to-resize sash hook (controlled).
+   `fracs` / `setFracs` come from the parent so positions can be saved
+   centrally.  `startDrag(aboveIdx, belowIdx, mouseEvent)` — pass null
+   for the fixed side. */
+function useSash(fracs, setFracs) {
   const colRef = React.useRef(null);
-  const [fracs, setFracs] = React.useState(initial);
   const fracsRef = React.useRef(fracs);
   fracsRef.current = fracs;
 
@@ -37,7 +37,7 @@ function useSash(initial) {
     document.addEventListener("mouseup",  onUp);
   };
 
-  return { colRef, fracs, startDrag };
+  return { colRef, startDrag };
 }
 
 function Sash({ onMouseDown }) {
@@ -83,7 +83,7 @@ function FinalJurorRow({ juror, idx }) {
   );
 }
 
-function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop, onJurorContextMenu, style }) {
+function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop, onJurorContextMenu, fracs, setFracs, style }) {
   const pool       = jurors.filter(j => j.status === "pool");
   const excused    = jurors.filter(j => j.status === "excused");
   const defStruck  = jurors.filter(j => j.status === "struck_def");
@@ -93,7 +93,7 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
   const act = onAction || (() => {});
 
   // fracs: [pool, excused, defStruck, proStruck, bothStruck]
-  const { colRef, fracs, startDrag } = useSash([1.4, 0.7, 0.7, 0.7, 0.5]);
+  const { colRef, startDrag } = useSash(fracs, setFracs);
 
   const [poolDragOver, setPoolDragOver] = React.useState(false);
   const poolDropProps = {
@@ -193,7 +193,7 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
   );
 }
 
-function RightColumn({ jurors, selectedFinalId, onSelectFinal, onJurorContextMenu, style }) {
+function RightColumn({ jurors, selectedFinalId, onSelectFinal, onJurorContextMenu, fracs, setFracs, style }) {
   const finals = jurors
     .filter(j => j.status === "final")
     .sort((a, b) => (a.finalNo || 99) - (b.finalNo || 99));
@@ -201,7 +201,7 @@ function RightColumn({ jurors, selectedFinalId, onSelectFinal, onJurorContextMen
   const selected = finals.find(j => j.id === selectedFinalId) || finals[0];
 
   // fracs: [finalList, finalInfo]
-  const { colRef, fracs, startDrag } = useSash([1.3, 1.0]);
+  const { colRef, startDrag } = useSash(fracs, setFracs);
 
   return (
     <aside className="col col-right" ref={colRef} style={style}>

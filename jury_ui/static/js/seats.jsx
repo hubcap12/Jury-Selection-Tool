@@ -87,7 +87,12 @@ function Seat({ seatNo, juror, selected, onClick, onDropJuror, onContextMenu }) 
           <span className="seat-jid">Juror #{juror.id}</span>
         </span>
       </header>
-      <div className="seat-name">{juror.name}</div>
+      <div className="seat-text">
+        <div className="seat-name">{juror.name}</div>
+        {juror.keywords && (
+          <div className="seat-keywords" title={juror.keywords}>{juror.keywords}</div>
+        )}
+      </div>
       <div className="seat-age">Age {juror.age}</div>
       <footer className={"seat-status seat-status-" + juror.status}>{statusText}</footer>
     </button>

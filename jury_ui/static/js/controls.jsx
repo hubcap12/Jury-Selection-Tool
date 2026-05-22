@@ -148,6 +148,7 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
   return (
     <section className="detail">
       <div className="detail-tab">Juror Details</div>
+      <div className="detail-body">
 
       <div className="detail-head">
         {juror ? (
@@ -216,6 +217,8 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
           <button className={"prio-btn prio-down3" + (juror?.rating === -3 ? " is-active" : "")} onClick={() => onSetRating(juror.id, -3)}>▼▼▼</button>
         </div>
       </div>
+
+      </div>
     </section>
   );
 }
@@ -223,21 +226,23 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
 /* -------------------------------------------------------------------------- */
 
 function StatusBar({ jurors, activePanel, numPanels, selectedJid }) {
-  const seatedCt = jurors.filter(j => j.status === "seated" && j.panel === activePanel).length;
-  const finalCt  = jurors.filter(j => j.status === "final").length;
-  const poolCt   = jurors.filter(j => j.status === "pool").length;
-  const struckCt = jurors.filter(j => /^struck/.test(j.status)).length;
+  const seatedCt  = jurors.filter(j => j.status === "seated" && j.panel === activePanel).length;
+  const finalCt   = jurors.filter(j => j.status === "final").length;
+  const poolCt    = jurors.filter(j => j.status === "pool").length;
+  const excusedCt = jurors.filter(j => j.status === "excused").length;
+  const struckCt  = jurors.filter(j => /^struck/.test(j.status)).length;
 
   return (
     <footer className="statusbar">
       <span className="status-cell"><span className="status-dot d-pool"></span>Pool {poolCt}</span>
       <span className="status-cell"><span className="status-dot d-seated"></span>Seated {seatedCt}</span>
+      <span className="status-cell"><span className="status-dot d-excused"></span>Excused {excusedCt}</span>
       <span className="status-cell"><span className="status-dot d-struck"></span>Struck {struckCt}</span>
       <span className="status-cell"><span className="status-dot d-final"></span>Final Jury {finalCt}</span>
       <span className="status-spacer"></span>
       <span className="status-cell status-cell-muted">Autosave on · every 15 min</span>
       <span className="status-cell status-cell-muted">Panel {activePanel} of {numPanels}</span>
-      <span className="status-cell status-cell-muted">v2.0.1 · PolyForm Noncommercial</span>
+      <span className="status-cell status-cell-muted">v2.0.2 · PolyForm Noncommercial</span>
     </footer>
   );
 }

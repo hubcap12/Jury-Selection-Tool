@@ -68,7 +68,7 @@ class JuryAPI:
     # ── State ──────────────────────────────────────────────────────────────
 
     def get_state(self) -> dict[str, Any]:
-        from app.config import SETTINGS
+        from app.config import SETTINGS, DEFAULT_SETTINGS
         return {
             "jurors":          self.jurors,
             "grid":            self.grid,
@@ -76,18 +76,30 @@ class JuryAPI:
             "num_panels":      int(SETTINGS.get("num_panels", 3)),
             "left_col_width":  int(SETTINGS.get("left_col_width", 280)),
             "right_col_width": int(SETTINGS.get("right_col_width", 280)),
+            "detail_height":   int(SETTINGS.get("detail_height", 250)),
+            "left_fracs":      list(SETTINGS.get("left_fracs",  DEFAULT_SETTINGS["left_fracs"])),
+            "right_fracs":     list(SETTINGS.get("right_fracs", DEFAULT_SETTINGS["right_fracs"])),
             "selected_seat":   self.selected_seat,
             "selected_final":  self.selected_final,
             "theme":           self.theme,
             "last_save_path":  self._last_save_path,
         }
 
-    def save_layout(self, left_width: int, right_width: int) -> dict[str, Any]:
-        """Persist current sidebar widths as the startup default."""
+    def save_layout(self, layout: dict[str, Any]) -> dict[str, Any]:
+        """Persist current sash positions (column widths, detail height,
+        and the per-pane flex fractions) as the startup default."""
         from app.config import SETTINGS
         from jury_ui.settings import _persist
-        SETTINGS["left_col_width"]  = max(160, int(left_width))
-        SETTINGS["right_col_width"] = max(160, int(right_width))
+        if "left_col_width" in layout:
+            SETTINGS["left_col_width"] = max(160, int(layout["left_col_width"]))
+        if "right_col_width" in layout:
+            SETTINGS["right_col_width"] = max(160, int(layout["right_col_width"]))
+        if "detail_height" in layout:
+            SETTINGS["detail_height"] = max(80, int(layout["detail_height"]))
+        if "left_fracs" in layout:
+            SETTINGS["left_fracs"] = [max(0.08, float(x)) for x in layout["left_fracs"]]
+        if "right_fracs" in layout:
+            SETTINGS["right_fracs"] = [max(0.08, float(x)) for x in layout["right_fracs"]]
         _persist()
         return {"ok": True}
 

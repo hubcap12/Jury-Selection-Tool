@@ -136,7 +136,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .app-root {
   display: grid;
-  grid-template-rows: 32px 28px 1fr 26px;
+  grid-template-rows: 28px 1fr 26px;
   height: 100vh;
   background:
     radial-gradient(1200px 600px at 80% -10%, color-mix(in oklch, var(--accent) 8%, transparent), transparent 60%),
@@ -264,9 +264,34 @@ input, select, textarea { font: inherit; color: inherit; }
   flex: 1;
   min-width: 0;
   background: var(--bg-canvas);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
 }
+.col-center > .control-bar    { flex: 0 0 auto; }
+.col-center > .seat-grid-wrap { flex: 1 1 0; min-height: 0; }
+.col-center > .detail-wrap {
+  flex: 0 0 auto;
+  min-height: 120px;
+  position: relative;
+  overflow: hidden;
+  padding: 14px 22px 16px;
+  box-sizing: border-box;
+}
+.col-center > .detail-wrap > .detail {
+  height: 100%;
+  margin: 0;
+  overflow: visible;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.detail-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sash-detail { cursor: ns-resize; }
 
 /* ── Panes (left + right) ─────────────────────────────────────────────────── */
 
@@ -582,6 +607,26 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: transform 100ms ease, box-shadow 100ms ease, border-color 100ms ease;
   min-width: 0;
   min-height: 0;
+}
+.seat-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.seat-text > .seat-name { align-self: stretch; }
+.seat-keywords {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  line-height: 1.2;
 }
 .seat > * { min-width: 0; }
 .seat:hover { transform: translateY(-1px); border-color: var(--line-3); }
@@ -952,6 +997,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 .d-pool   { background: var(--accent); box-shadow: 0 0 0 2px var(--accent-softer); }
 .d-seated { background: var(--c-seated); box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-seated) 22%, transparent); }
+.d-excused { background: var(--c-excused); box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-excused) 22%, transparent); }
 .d-struck { background: var(--c-struck); box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-struck) 22%, transparent); }
 .d-final  { background: var(--c-final);  box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-final) 22%, transparent); }
 /* ── Light-mode contrast overrides ──────────────────────────────────────── */
