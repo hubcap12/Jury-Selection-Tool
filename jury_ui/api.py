@@ -20,7 +20,12 @@ VALID_STATUSES = {"pool", "seated", "excused",
 
 class JuryAPI:
     def __init__(self) -> None:
-        self.jurors: list[dict[str, Any]] = []
+        # `jurors` is a property — the setter rebuilds the id index so old
+        # call sites (`api.jurors = new_list`) and any external mutation
+        # via fileio / state.py keep the index in sync automatically.
+        self._jurors: list[dict[str, Any]] = []
+        self._id_index: dict[int, dict[str, Any]] = {}
+        self._next_id_val: int = 1  # next juror id to hand out (O(1))
         self.grid: dict[str, Any] = {"rows": 4, "cols": 7, "jury_size": 12, "corner": "TL"}
         self.active_panel: int = 1
         self.selected_seat: int | None = None
@@ -30,6 +35,27 @@ class JuryAPI:
         self._last_save_path: str | None = None
         self._work_dir: str = os.path.expanduser("~")
         self._autosaver = None  # set by app.run() if autosave is enabled
+
+    # ── jurors list + id index ────────────────────────────────────────────
+    # The id index turns O(N) per-juror lookups (used by every mutating
+    # method) into O(1).  We expose `jurors` as a property so any call
+    # site that assigns `api.jurors = ...` automatically rebuilds the
+    # index — keeps fileio.load_state and state.py from drifting.
+
+    @property
+    def jurors(self) -> list[dict[str, Any]]:
+        return self._jurors
+
+    @jurors.setter
+    def jurors(self, new_list: list[dict[str, Any]]) -> None:
+        self._jurors = new_list
+        self._rebuild_id_index()
+
+    def _rebuild_id_index(self) -> None:
+        self._id_index = {j["id"]: j for j in self._jurors if "id" in j}
+        # Track the next id past the current max so add_juror is O(1).
+        max_id = max(self._id_index.keys(), default=0)
+        self._next_id_val = max_id + 1
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -47,16 +73,24 @@ class JuryAPI:
     # ── Helpers ────────────────────────────────────────────────────────────
 
     def _by_id(self, jid: int) -> dict[str, Any] | None:
-        for j in self.jurors:
-            if j["id"] == int(jid):
-                return j
-        return None
+        return self._id_index.get(int(jid))
 
     def _next_id(self) -> int:
-        return max((j["id"] for j in self.jurors), default=0) + 1
+        return self._next_id_val
 
     def _state_ok(self) -> dict[str, Any]:
         return {"ok": True, "state": self.get_state()}
+
+    def _patch_ok(self, *touched: dict[str, Any]) -> dict[str, Any]:
+        """Return a result that patches just the changed jurors.
+
+        The client splices these into its local `jurors` array by id, avoiding
+        a full-state replacement that would force every memoized child to
+        recompute.  Use this for single-juror mutations (rating, keywords,
+        notes, status change, seat assignment) — anything where we know
+        exactly which juror records changed.
+        """
+        return {"ok": True, "jurors_patch": list(touched)}
 
     def _renumber_finals(self) -> None:
         """Compact the finalNo values so they're 1..N in current order."""
@@ -134,8 +168,9 @@ class JuryAPI:
             age_i = int(age) if str(age).strip() else 0
         except (TypeError, ValueError):
             age_i = 0
+        jid = self._next_id_val
         juror = {
-            "id":       self._next_id(),
+            "id":       jid,
             "name":     name,
             "age":      age_i,
             "notes":    notes or "",
@@ -144,7 +179,9 @@ class JuryAPI:
             "panel":    0,
             "rating":   0,
         }
-        self.jurors.append(juror)
+        self._jurors.append(juror)
+        self._id_index[jid] = juror
+        self._next_id_val = jid + 1
         return self._state_ok()
 
     def edit_juror(self, jid: int, fields: dict[str, Any]) -> dict[str, Any]:
@@ -160,19 +197,23 @@ class JuryAPI:
                     except (TypeError, ValueError):
                         continue
                 j[k] = v
-        return self._state_ok()
+        return self._patch_ok(j)
 
     def remove_juror(self, jid: int) -> dict[str, Any]:
-        j = self._by_id(jid)
-        if not j:
+        jid_i = int(jid)
+        j = self._id_index.pop(jid_i, None)
+        if j is None:
             return {"ok": False, "msg": f"Juror #{jid} not found"}
         was_final = (j.get("status") == "final")
-        self.jurors = [x for x in self.jurors if x["id"] != int(jid)]
+        # Remove in-place rather than rebuilding the list, so the property
+        # setter (which would re-do the index we just patched) doesn't run.
+        self._jurors.remove(j)
         if was_final:
             self._renumber_finals()
         return self._state_ok()
 
     def reset(self) -> dict[str, Any]:
+        # Use the property setter so the index is cleared too.
         self.jurors = []
         self.selected_seat = None
         self.selected_final = None
@@ -197,13 +238,17 @@ class JuryAPI:
         prev_seat = j.get("seat")
         prev_panel = j.get("panel")
 
-        occupant = next(
-            (o for o in self.jurors
-             if o["id"] != jid
-             and o.get("panel") == panel
-             and o.get("seat") == seat),
-            None,
-        )
+        # Seats are dense — scanning the index dict values is still O(N) but
+        # the dict iteration is much faster than list iteration with attribute
+        # lookups, and avoids one extra pass over the jurors list.  N is
+        # bounded by the jury pool size (typically <100) so this is plenty.
+        occupant = None
+        for o in self._id_index.values():
+            if (o["id"] != jid
+                    and o.get("panel") == panel
+                    and o.get("seat") == seat):
+                occupant = o
+                break
 
         if occupant is not None:
             if prev_seat is not None:
@@ -221,23 +266,29 @@ class JuryAPI:
         j["panel"] = panel
         if j.get("status") in ("pool", None):
             j["status"] = "seated"
-        return self._state_ok()
+        # Patch just the dragged juror, plus the swap/bump target if any.
+        if occupant is not None:
+            return self._patch_ok(j, occupant)
+        return self._patch_ok(j)
 
     def unseat(self, jid: int) -> dict[str, Any]:
         j = self._by_id(jid)
         if not j:
             return {"ok": False, "msg": f"Juror #{jid} not found"}
+        was_final = (j.get("status") == "final")
         j["seat"] = None
         j["panel"] = 0
         if j.get("status") == "seated":
             j["status"] = "pool"
-        if j.get("status") == "final":
+        if was_final:
             # Removing a seat shouldn't normally happen for a final juror,
             # but if it does, drop final status to avoid orphaned final-no.
             j["status"] = "pool"
             j.pop("finalNo", None)
             self._renumber_finals()
-        return self._state_ok()
+            # Full state because _renumber_finals touched siblings too.
+            return self._state_ok()
+        return self._patch_ok(j)
 
     def auto_seat(self) -> dict[str, Any]:
         """Place every pool juror into the first available seat on the
@@ -279,7 +330,11 @@ class JuryAPI:
         if status == "pool":
             j["seat"] = None
             j["panel"] = 0
-        return self._state_ok()
+        # If we renumbered finals, return full state so the right column
+        # reflects the new ordering.
+        if was_final:
+            return self._state_ok()
+        return self._patch_ok(j)
 
     def mark_final(self, jid: int) -> dict[str, Any]:
         """Mark a juror as a final-jury member.  Auto-assigns the next
@@ -288,21 +343,23 @@ class JuryAPI:
         if not j:
             return {"ok": False, "msg": f"Juror #{jid} not found"}
         if j.get("status") == "final":
-            return self._state_ok()
-        finals = [x for x in self.jurors if x.get("status") == "final"]
+            return self._patch_ok(j)
+        finals_ct = sum(1 for x in self._id_index.values()
+                        if x.get("status") == "final")
         j["status"] = "final"
-        j["finalNo"] = len(finals) + 1
-        return self._state_ok()
+        j["finalNo"] = finals_ct + 1
+        return self._patch_ok(j)
 
     def unmark_final(self, jid: int) -> dict[str, Any]:
         j = self._by_id(jid)
         if not j:
             return {"ok": False, "msg": f"Juror #{jid} not found"}
         if j.get("status") != "final":
-            return self._state_ok()
+            return self._patch_ok(j)
         j["status"] = "seated" if j.get("seat") else "pool"
         j.pop("finalNo", None)
         self._renumber_finals()
+        # _renumber_finals can touch other jurors — return full state.
         return self._state_ok()
 
     def set_rating(self, jid: int, rating: int) -> dict[str, Any]:
@@ -314,21 +371,21 @@ class JuryAPI:
         except (TypeError, ValueError):
             r = 0
         j["rating"] = max(-3, min(3, r))
-        return self._state_ok()
+        return self._patch_ok(j)
 
     def set_keywords(self, jid: int, keywords: str) -> dict[str, Any]:
         j = self._by_id(jid)
         if not j:
             return {"ok": False, "msg": f"Juror #{jid} not found"}
         j["keywords"] = keywords or ""
-        return self._state_ok()
+        return self._patch_ok(j)
 
     def set_notes(self, jid: int, notes: str) -> dict[str, Any]:
         j = self._by_id(jid)
         if not j:
             return {"ok": False, "msg": f"Juror #{jid} not found"}
         j["notes"] = notes or ""
-        return self._state_ok()
+        return self._patch_ok(j)
 
     # ── Window controls ───────────────────────────────────────────────────
 

@@ -203,6 +203,11 @@ class Autosaver:
     ``app/_fileio.FileIOMixin._autosave``: every ``interval_min`` minutes,
     write ``autosave_1.json`` and shift older snapshots up to
     ``autosave_<keep>.json`` (deleting the oldest).
+
+    Runs on a ``threading.Timer`` so it doesn't block the UI thread.  To
+    avoid reading ``api.jurors`` mid-mutation (drag/drop is a multi-step
+    write), we build the save payload synchronously, then drop the lock
+    before doing the actual disk I/O.
     """
 
     def __init__(self, api, work_dir: str,
@@ -213,6 +218,9 @@ class Autosaver:
         self.keep = max(1, int(keep))
         self._timer: threading.Timer | None = None
         self._stopped = False
+        # Re-entrant in case some future code path calls save_state on the
+        # main thread while holding this lock.
+        self._snapshot_lock = threading.RLock()
 
     def start(self) -> None:
         self._schedule()
@@ -234,14 +242,21 @@ class Autosaver:
         if self._stopped:
             return
         try:
-            if self.api.jurors:
-                self._rotate_and_save()
+            # Snapshot under the lock so we can't read jurors mid-mutation.
+            # Disk I/O happens outside the lock so a slow write doesn't stall
+            # the UI thread if it grabs the lock to mutate jurors.
+            with self._snapshot_lock:
+                if not self.api.jurors:
+                    self._schedule()
+                    return
+                payload = json.dumps(build_save_data(self.api), indent=2)
+            self._rotate_and_save(payload)
         except Exception as e:
             # Never crash the timer thread — autosave failure is silent.
             print(f"[autosave] failed: {e}")
         self._schedule()
 
-    def _rotate_and_save(self) -> None:
+    def _rotate_and_save(self, payload: str) -> None:
         d = self.work_dir
         os.makedirs(d, exist_ok=True)
         oldest = os.path.join(d, f"autosave_{self.keep}.json")
@@ -252,4 +267,5 @@ class Autosaver:
             dst = os.path.join(d, f"autosave_{i + 1}.json")
             if os.path.exists(src):
                 os.replace(src, dst)
-        save_state(self.api, os.path.join(d, "autosave_1.json"))
+        with open(os.path.join(d, "autosave_1.json"), "w", encoding="utf-8") as f:
+            f.write(payload)

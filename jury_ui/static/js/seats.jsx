@@ -13,8 +13,25 @@ function RatingArrows({ rating }) {
   );
 }
 
-function Seat({ seatNo, juror, selected, onClick, onDropJuror, onContextMenu }) {
+// Seat tile.  Props are kept "primitive enough" that React.memo (applied
+// below) can skip the re-render when nothing about this tile changed.  The
+// parent passes stable callbacks (onSelectSeat / onDropJuror / onContextMenu)
+// and we synthesise the actual DOM handlers internally using our own seatNo.
+const Seat = React.memo(function Seat({
+  seatNo, juror, selected, onSelectSeat, onDropJuror, onContextMenu,
+}) {
   const [dragOver, setDragOver] = React.useState(false);
+
+  const handleClick = React.useCallback(() => {
+    if (onSelectSeat) onSelectSeat(seatNo);
+  }, [onSelectSeat, seatNo]);
+
+  const handleDrop = React.useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const jid = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (!Number.isNaN(jid) && onDropJuror) onDropJuror(jid, seatNo);
+  }, [onDropJuror, seatNo]);
 
   const dropProps = {
     onDragOver: (e) => {
@@ -23,19 +40,14 @@ function Seat({ seatNo, juror, selected, onClick, onDropJuror, onContextMenu }) 
       if (!dragOver) setDragOver(true);
     },
     onDragLeave: () => setDragOver(false),
-    onDrop: (e) => {
-      e.preventDefault();
-      setDragOver(false);
-      const jid = parseInt(e.dataTransfer.getData("text/plain"), 10);
-      if (!Number.isNaN(jid)) onDropJuror && onDropJuror(jid, seatNo);
-    },
+    onDrop: handleDrop,
   };
 
   if (!juror) {
     return (
       <button
         className={"seat seat-empty" + (dragOver ? " is-drag-over" : "")}
-        onClick={onClick}
+        onClick={handleClick}
         aria-label={`Seat ${seatNo}, empty`}
         {...dropProps}
       >
@@ -70,7 +82,7 @@ function Seat({ seatNo, juror, selected, onClick, onDropJuror, onContextMenu }) 
   return (
     <button
       className={cls}
-      onClick={onClick}
+      onClick={handleClick}
       draggable={true}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", String(juror.id));
@@ -97,7 +109,7 @@ function Seat({ seatNo, juror, selected, onClick, onDropJuror, onContextMenu }) 
       <footer className={"seat-status seat-status-" + juror.status}>{statusText}</footer>
     </button>
   );
-}
+});
 
 function seatNum(r, c, rows, cols, corner) {
   switch (corner) {
@@ -108,21 +120,26 @@ function seatNum(r, c, rows, cols, corner) {
   }
 }
 
-function SeatGrid({ rows, cols, corner, jurors, selectedSeat, onSelectSeat, onDropJuror, onJurorContextMenu }) {
-  const bySeat = {};
-  jurors.forEach(j => { if (j.seat) bySeat[j.seat] = j; });
-
+const SeatGrid = React.memo(function SeatGrid({
+  rows, cols, corner, bySeat, selectedSeat,
+  onSelectSeat, onDropJuror, onJurorContextMenu,
+}) {
+  // `bySeat` is the pre-indexed { seatNo: juror } map, scoped to the active
+  // panel — built once in the parent via useMemo.  Seat is memoized and
+  // receives stable callbacks, so when one juror changes, only that single
+  // tile re-renders — the other (rows*cols - 1) tiles bail out via memo.
   const cells = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const seatNo = seatNum(r, c, rows, cols, corner || "TL");
+      const juror = bySeat[seatNo];
       cells.push(
         <Seat
-          key={seatNo}
+          key={juror ? `j${juror.id}` : `s${seatNo}`}
           seatNo={seatNo}
-          juror={bySeat[seatNo]}
+          juror={juror}
           selected={selectedSeat === seatNo}
-          onClick={() => onSelectSeat(seatNo)}
+          onSelectSeat={onSelectSeat}
           onDropJuror={onDropJuror}
           onContextMenu={onJurorContextMenu}
         />
@@ -143,6 +160,6 @@ function SeatGrid({ rows, cols, corner, jurors, selectedSeat, onSelectSeat, onDr
       </div>
     </div>
   );
-}
+});
 
 Object.assign(window, { Seat, SeatGrid, RatingArrows });

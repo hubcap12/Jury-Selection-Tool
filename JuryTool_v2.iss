@@ -4,7 +4,7 @@
 [Setup]
 AppId={{B7E4D2F1-9C3A-4E8B-A671-2F5E9D1B6C83}
 AppName=Jury Selection Tool
-AppVersion=2.0.2
+AppVersion=2.0.3
 AppPublisher=Cole Mason
 AppPublisherURL=
 DefaultDirName={localappdata}\Programs\JuryTool

@@ -225,12 +225,16 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
 
 /* -------------------------------------------------------------------------- */
 
-function StatusBar({ jurors, activePanel, numPanels, selectedJid }) {
-  const seatedCt  = jurors.filter(j => j.status === "seated" && j.panel === activePanel).length;
-  const finalCt   = jurors.filter(j => j.status === "final").length;
-  const poolCt    = jurors.filter(j => j.status === "pool").length;
-  const excusedCt = jurors.filter(j => j.status === "excused").length;
-  const struckCt  = jurors.filter(j => /^struck/.test(j.status)).length;
+function StatusBar({ byStatus, struckCount, activePanel, numPanels, selectedJid }) {
+  // Status counters are derived from the pre-bucketed `byStatus` map so we
+  // don't re-scan the juror list five times per render.  The seated count
+  // is panel-scoped, so it filters one bucket (small) instead of all.
+  let seatedCt = 0;
+  for (const j of byStatus.seated) if (j.panel === activePanel) seatedCt++;
+  const finalCt   = byStatus.final.length;
+  const poolCt    = byStatus.pool.length;
+  const excusedCt = byStatus.excused.length;
+  const struckCt  = struckCount;
 
   return (
     <footer className="statusbar">
@@ -242,9 +246,17 @@ function StatusBar({ jurors, activePanel, numPanels, selectedJid }) {
       <span className="status-spacer"></span>
       <span className="status-cell status-cell-muted">Autosave on · every 15 min</span>
       <span className="status-cell status-cell-muted">Panel {activePanel} of {numPanels}</span>
-      <span className="status-cell status-cell-muted">v2.0.2 · PolyForm Noncommercial</span>
+      <span className="status-cell status-cell-muted">v2.0.3 · PolyForm Noncommercial</span>
     </footer>
   );
 }
 
-Object.assign(window, { ControlBar, DetailEditor, StatusBar });
+// Memoize so unrelated re-renders of the root app don't force these to
+// re-render.  Their props are stable now (numbers/strings + useCallback'd
+// handlers from the parent) so the comparison succeeds the vast majority
+// of the time.
+Object.assign(window, {
+  ControlBar:    React.memo(ControlBar),
+  DetailEditor:  React.memo(DetailEditor),
+  StatusBar:     React.memo(StatusBar),
+});

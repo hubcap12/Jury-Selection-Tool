@@ -83,12 +83,12 @@ function FinalJurorRow({ juror, idx }) {
   );
 }
 
-function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop, onJurorContextMenu, fracs, setFracs, style }) {
-  const pool       = jurors.filter(j => j.status === "pool");
-  const excused    = jurors.filter(j => j.status === "excused");
-  const defStruck  = jurors.filter(j => j.status === "struck_def");
-  const proStruck  = jurors.filter(j => j.status === "struck_pro");
-  const bothStruck = jurors.filter(j => j.status === "struck_both");
+function LeftColumn({ byStatus, selectedJid, onSelect, theme, onToggleTheme, onAction, onUnseatDrop, onJurorContextMenu, fracs, setFracs, style }) {
+  const pool       = byStatus.pool;
+  const excused    = byStatus.excused;
+  const defStruck  = byStatus.struck_def;
+  const proStruck  = byStatus.struck_pro;
+  const bothStruck = byStatus.struck_both;
 
   const act = onAction || (() => {});
 
@@ -193,11 +193,8 @@ function LeftColumn({ jurors, selectedJid, onSelect, theme, onToggleTheme, onAct
   );
 }
 
-function RightColumn({ jurors, selectedFinalId, onSelectFinal, onJurorContextMenu, fracs, setFracs, style }) {
-  const finals = jurors
-    .filter(j => j.status === "final")
-    .sort((a, b) => (a.finalNo || 99) - (b.finalNo || 99));
-
+function RightColumn({ finals, selectedFinalId, onSelectFinal, onJurorContextMenu, fracs, setFracs, style }) {
+  // `finals` is already sorted by finalNo by the parent (byStatus.final).
   const selected = finals.find(j => j.id === selectedFinalId) || finals[0];
 
   // fracs: [finalList, finalInfo]
@@ -256,4 +253,14 @@ function RightColumn({ jurors, selectedFinalId, onSelectFinal, onJurorContextMen
   );
 }
 
-Object.assign(window, { LeftColumn, RightColumn, SectionTitle, JurorRow });
+// React.memo so the sidebars only re-render when their actual props change.
+// With the lifted byStatus / finals indices + useCallback'd handlers in the
+// parent, these now bail out on unrelated state updates (toast, modal, sash
+// drags) instead of re-doing their internal layout.
+const MemoLeftColumn  = React.memo(LeftColumn);
+const MemoRightColumn = React.memo(RightColumn);
+Object.assign(window, {
+  LeftColumn:  MemoLeftColumn,
+  RightColumn: MemoRightColumn,
+  SectionTitle, JurorRow,
+});

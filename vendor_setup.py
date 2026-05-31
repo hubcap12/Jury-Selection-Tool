@@ -24,14 +24,14 @@ VENDOR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # these, update the integrity hashes too.
 FILES = [
     (
-        "react.development.js",
-        "https://unpkg.com/react@18.3.1/umd/react.development.js",
-        None,  # hash skipped — upstream CDN content may vary
+        "react.production.min.js",
+        "https://unpkg.com/react@18.3.1/umd/react.production.min.js",
+        None,
     ),
     (
-        "react-dom.development.js",
-        "https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js",
-        None,  # sha verification optional — set None to skip
+        "react-dom.production.min.js",
+        "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js",
+        None,
     ),
     (
         "babel.min.js",

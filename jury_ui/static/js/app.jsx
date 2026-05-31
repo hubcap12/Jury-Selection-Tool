@@ -110,9 +110,54 @@ function JuryApp() {
     return jurors.find(j => j.seat === selectedSeat && j.panel === activePanel);
   }, [jurors, selectedJid, selectedSeat, activePanel]);
 
-  // Apply mutation results from Python.
-  const applyResult = (r) => {
+  // Derived indices — computed once per `jurors` change so the sidebars,
+  // status bar, and seat grid don't each re-scan the full list on every
+  // render.  `byStatus` buckets the array; `byPanelSeat` indexes seated
+  // jurors by (panel, seat) so SeatGrid doesn't rebuild its lookup each
+  // render either.
+  const byStatus = React.useMemo(() => {
+    const m = {
+      pool: [], seated: [], excused: [],
+      struck_def: [], struck_pro: [], struck_both: [], final: [],
+    };
+    for (const j of jurors) {
+      const bucket = m[j.status];
+      if (bucket) bucket.push(j);
+    }
+    m.final.sort((a, b) => (a.finalNo || 999) - (b.finalNo || 999));
+    return m;
+  }, [jurors]);
+
+  // Tile lookup for the active panel.  Keys are seat numbers; values are the
+  // juror occupying that seat.
+  const activePanelBySeat = React.useMemo(() => {
+    const m = {};
+    for (const j of jurors) {
+      if (j.seat && j.panel === activePanel) m[j.seat] = j;
+    }
+    return m;
+  }, [jurors, activePanel]);
+
+  const struckCount =
+    byStatus.struck_def.length +
+    byStatus.struck_pro.length +
+    byStatus.struck_both.length;
+
+  // Apply mutation results from Python.  Fast path: if the server returned
+  // a `jurors_patch` (the changed juror records only), splice them into the
+  // local array by id.  Falls back to full-state replacement when the server
+  // sent `state` instead (used for actions that touch many jurors — load,
+  // reset, auto_seat, unmark_final, etc.).
+  //
+  // useCallback([]) is safe here because every value we touch is either a
+  // stable state setter or a property of `r` (the argument).
+  const applyResult = React.useCallback((r) => {
     if (!r) return;
+    if (r.jurors_patch && r.jurors_patch.length) {
+      const patch = new Map();
+      for (const j of r.jurors_patch) patch.set(j.id, j);
+      setJurors(prev => prev.map(j => patch.get(j.id) || j));
+    }
     if (r.state) {
       setJurors(r.state.jurors || []);
       if (r.state.grid) {
@@ -123,66 +168,73 @@ function JuryApp() {
       }
       if (r.state.active_panel) setActivePanel(r.state.active_panel);
     }
-    if (r.msg) showToast(r.msg);
-  };
+    // showToast captures setToast (stable) but is itself stable below too.
+    if (r.msg) showToastRef.current(r.msg);
+  }, []);
 
-  const handleSelectSeat = (seatNo) => {
+  // Stable ref to showToast so applyResult can call it without depending on
+  // a fresh closure each render.  showToast itself is defined below.
+  const showToastRef = React.useRef(null);
+
+  // Handlers — all wrapped in useCallback so memoized children (Seat,
+  // SeatGrid, LeftColumn, etc.) actually bail out of re-rendering when
+  // their props are referentially stable.
+  const handleSelectSeat = React.useCallback((seatNo) => {
     setSelectedSeat(seatNo);
     setSelectedJid(null);
     pyCall("select_seat", activePanel, seatNo);
-  };
+  }, [activePanel]);
 
-  const handleSelectJid = (jid) => {
+  const handleSelectJid = React.useCallback((jid) => {
     setSelectedJid(jid);
-    const j = jurors.find(x => x.id === jid);
-    if (j && j.seat) setSelectedSeat(j.seat);
-  };
+    // Read jurors via functional setter to avoid depending on the array
+    // reference itself (which changes on every patch).
+    setJurors(prev => {
+      const j = prev.find(x => x.id === jid);
+      if (j && j.seat) setSelectedSeat(j.seat);
+      return prev;
+    });
+  }, []);
 
   // Drag a juror onto a seat — assigns or swaps.
-  const handleDropOnSeat = async (jid, seatNo) => {
+  const handleDropOnSeat = React.useCallback(async (jid, seatNo) => {
     const r = await pyCall("assign_seat", jid, activePanel, seatNo);
     applyResult(r);
     setSelectedSeat(seatNo);
     setSelectedJid(null);
-  };
+  }, [activePanel, applyResult]);
 
   // Drag a juror onto the Preliminary Pool pane — unseat.
-  const handleUnseatDrop = async (jid) => {
-    const r = await pyCall("unseat", jid);
-    applyResult(r);
-  };
+  const handleUnseatDrop = React.useCallback(async (jid) => {
+    applyResult(await pyCall("unseat", jid));
+  }, [applyResult]);
 
   // Detail-panel handlers.
-  const handleSetStatus = async (jid, status) => {
-    const r = await pyCall("set_status", jid, status);
-    applyResult(r);
-  };
-  const handleSetRating = async (jid, rating) => {
-    const r = await pyCall("set_rating", jid, rating);
-    applyResult(r);
-  };
-  const handleMarkFinal = async (jid) => {
-    const r = await pyCall("mark_final", jid);
-    applyResult(r);
-  };
-  const handleUnmarkFinal = async (jid) => {
-    const r = await pyCall("unmark_final", jid);
-    applyResult(r);
-  };
-  const handleSaveKeywords = async (jid, kw) => {
-    const r = await pyCall("set_keywords", jid, kw);
-    applyResult(r);
-  };
-  const handleSaveNotes = async (jid, n) => {
-    const r = await pyCall("set_notes", jid, n);
-    applyResult(r);
-  };
-  const handleUnseat = async (jid) => {
-    const r = await pyCall("unseat", jid);
-    applyResult(r);
-  };
+  const handleSetStatus = React.useCallback(async (jid, status) => {
+    applyResult(await pyCall("set_status", jid, status));
+  }, [applyResult]);
+  const handleSetRating = React.useCallback(async (jid, rating) => {
+    applyResult(await pyCall("set_rating", jid, rating));
+  }, [applyResult]);
+  const handleMarkFinal = React.useCallback(async (jid) => {
+    applyResult(await pyCall("mark_final", jid));
+  }, [applyResult]);
+  const handleUnmarkFinal = React.useCallback(async (jid) => {
+    applyResult(await pyCall("unmark_final", jid));
+  }, [applyResult]);
+  const handleSaveKeywords = React.useCallback(async (jid, kw) => {
+    applyResult(await pyCall("set_keywords", jid, kw));
+  }, [applyResult]);
+  const handleSaveNotes = React.useCallback(async (jid, n) => {
+    applyResult(await pyCall("set_notes", jid, n));
+  }, [applyResult]);
+  const handleUnseat = React.useCallback(async (jid) => {
+    applyResult(await pyCall("unseat", jid));
+  }, [applyResult]);
 
-  const handleContextMenu = (juror, x, y) => setCtxMenu({ juror, x, y });
+  const handleContextMenu = React.useCallback((juror, x, y) => {
+    setCtxMenu({ juror, x, y });
+  }, []);
 
   // Vertical drag for the detail (info) panel sash.
   const startDetailDrag = (e) => {
@@ -226,8 +278,11 @@ function JuryApp() {
     document.addEventListener("mouseup",  onUp);
   };
 
-  // Left-column action buttons.
-  const handleAction = async (kind) => {
+  // Left-column action buttons.  `selectedJuror` is referenced inside, so it
+  // has to be a dep — accept the new identity when selection changes.  The
+  // alternative would be a ref, but actions are rare enough that the cost
+  // is negligible.
+  const handleAction = React.useCallback(async (kind) => {
     switch (kind) {
       case "Add juror":
         setModal({ kind: "add" });
@@ -267,12 +322,12 @@ function JuryApp() {
       default:
         showToast(kind);
     }
-  };
+  }, [selectedJuror, applyResult, showToast]);
 
-  const handleSetPanel = (n) => {
+  const handleSetPanel = React.useCallback((n) => {
     setActivePanel(n);
     pyCall("set_active_panel", n);
-  };
+  }, []);
 
   // Suppress the browser's native context menu globally.
   React.useEffect(() => {
@@ -302,7 +357,9 @@ function JuryApp() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Apply CSS vars from tweaks.
+  // Apply CSS vars from tweaks.  Theme is pushed to Python only when it
+  // actually changes (was previously firing on every tweak edit — radius,
+  // accent, density, etc. — which round-tripped the bridge for nothing).
   React.useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = t.theme;
@@ -312,15 +369,19 @@ function JuryApp() {
     root.style.setProperty("--radius-sm", Math.max(2, t.radius - 4) + "px");
     root.style.setProperty("--radius-lg", (t.radius + 4) + "px");
     root.style.setProperty("--font-ui", FONT_STACKS[t.fontStack] || FONT_STACKS.segoe);
-    pyCall("set_theme", t.theme);
   }, [t]);
 
+  React.useEffect(() => {
+    pyCall("set_theme", t.theme);
+  }, [t.theme]);
+
   // Toast helper for "coming soon" actions in stage 1.
-  const showToast = (msg) => {
+  const showToast = React.useCallback((msg) => {
     setToast(msg);
     clearTimeout(showToast._t);
     showToast._t = setTimeout(() => setToast(null), 2200);
-  };
+  }, []);
+  showToastRef.current = showToast;
 
   return (
     <div className="app-root">
@@ -347,7 +408,7 @@ function JuryApp() {
 
       <div className="app-body">
         <LeftColumn
-          jurors={jurors}
+          byStatus={byStatus}
           selectedJid={selectedJuror?.id}
           onSelect={handleSelectJid}
           theme={t.theme}
@@ -377,7 +438,7 @@ function JuryApp() {
             rows={rows}
             cols={cols}
             corner={corner}
-            jurors={jurors.filter(j => j.panel === activePanel)}
+            bySeat={activePanelBySeat}
             selectedSeat={selectedSeat}
             onSelectSeat={handleSelectSeat}
             onDropJuror={handleDropOnSeat}
@@ -404,7 +465,7 @@ function JuryApp() {
         <div className="hsash" onMouseDown={(e) => startHDrag("right", e)} />
 
         <RightColumn
-          jurors={jurors}
+          finals={byStatus.final}
           selectedFinalId={selectedFinal}
           onSelectFinal={setSelectedFinal}
           onJurorContextMenu={handleContextMenu}
@@ -413,7 +474,7 @@ function JuryApp() {
         />
       </div>
 
-      <StatusBar jurors={jurors} activePanel={activePanel} numPanels={numPanels} selectedJid={selectedJuror?.id}/>
+      <StatusBar byStatus={byStatus} struckCount={struckCount} activePanel={activePanel} numPanels={numPanels} selectedJid={selectedJuror?.id}/>
 
       <TweaksUI t={t} setTweak={setTweak}/>
 

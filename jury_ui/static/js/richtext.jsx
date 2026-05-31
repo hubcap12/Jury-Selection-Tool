@@ -115,6 +115,8 @@ function RichTextEditor({ value, onSave, placeholder }) {
   const [toolbar, setToolbar] = React.useState({ bold: false, italic: false, underline: false });
   // Sentinel so the mount-effect always runs, even when value === "".
   const lastValueRef = React.useRef(undefined);
+  // Pending debounce timer for keystroke-driven saves.
+  const saveTimerRef = React.useRef(null);
 
   // Mount + reload when external value changes (juror swap, file load).
   React.useEffect(() => {
@@ -125,6 +127,15 @@ function RichTextEditor({ value, onSave, placeholder }) {
     }
   }, [value]);
 
+  // Flush any pending debounced save on unmount so we never lose keystrokes.
+  React.useEffect(() => () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      fireSaveNow();
+    }
+  }, []);
+
   const refreshToolbar = () => {
     setToolbar({
       bold:      document.queryCommandState("bold"),
@@ -133,21 +144,41 @@ function RichTextEditor({ value, onSave, placeholder }) {
     });
   };
 
-  const cmd = (name, arg) => {
-    document.execCommand(name, false, arg);
-    ref.current.focus();
-    refreshToolbar();
-    fireSave();
-  };
-
-  const fireSave = () => {
+  // Immediate save — used by toolbar commands and onBlur, where the user has
+  // signalled an explicit pause point.
+  const fireSaveNow = () => {
     if (!ref.current || !onSave) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
     const notes = runsToNotes(htmlToRuns(ref.current));
     lastValueRef.current = notes;
     onSave(notes);
   };
 
-  const onInput = () => { fireSave(); };
+  // Debounced save — used by onInput so we don't round-trip to Python on every
+  // keystroke.  400ms is short enough to feel instant but long enough that a
+  // burst of typing collapses into a single save.
+  const fireSaveDebounced = () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      fireSaveNow();
+    }, 400);
+  };
+
+  const cmd = (name, arg) => {
+    document.execCommand(name, false, arg);
+    ref.current.focus();
+    refreshToolbar();
+    fireSaveNow();
+  };
+
+  // Back-compat alias for any older call sites.
+  const fireSave = fireSaveNow;
+
+  const onInput = () => { fireSaveDebounced(); };
   const onKey   = () => { setTimeout(refreshToolbar, 0); };
   const onSel   = () => { refreshToolbar(); };
 
@@ -203,7 +234,7 @@ function RichTextEditor({ value, onSave, placeholder }) {
         onInput={onInput}
         onKeyUp={onKey}
         onMouseUp={onSel}
-        onBlur={fireSave}
+        onBlur={fireSaveNow}
         spellCheck={true}
       ></div>
     </div>

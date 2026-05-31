@@ -25,7 +25,7 @@ def _resource_path(*parts: str) -> str:
 def _vendor_present() -> bool:
     """Sanity-check that the user has run ``vendor_setup.py``."""
     js_dir = _resource_path("jury_ui", "static", "js", "vendor")
-    needed = ("react.development.js", "react-dom.development.js", "babel.min.js")
+    needed = ("react.production.min.js", "react-dom.production.min.js", "babel.min.js")
     return all(os.path.exists(os.path.join(js_dir, n)) for n in needed)
 
 

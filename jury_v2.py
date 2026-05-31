@@ -11,3 +11,4 @@ os.environ.setdefault("PYWEBVIEW_GUI", "qt")
 if __name__ == "__main__":
     from jury_ui import run
     run()
+1

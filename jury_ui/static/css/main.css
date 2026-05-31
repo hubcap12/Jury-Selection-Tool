@@ -607,6 +607,9 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: transform 100ms ease, box-shadow 100ms ease, border-color 100ms ease;
   min-width: 0;
   min-height: 0;
+  /* Tile contents can't affect siblings — tell the browser so it can scope
+     layout/paint to this tile when one juror's data changes. */
+  contain: layout style paint;
 }
 .seat-text {
   display: flex;
