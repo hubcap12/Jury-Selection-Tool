@@ -468,10 +468,6 @@ class JuryAPI:
             return {"ok": False, "msg": "Cancelled"}
         try:
             _pdf.export(self, path, title or "Jury Selection Report")
-        except ImportError:
-            return {"ok": False, "msg":
-                    "PDF export needs the 'reportlab' package. "
-                    "Install with: pip install reportlab, then restart."}
         except Exception as e:
             return {"ok": False, "msg": f"PDF export failed: {e}"}
         return {"ok": True, "msg": f"Exported PDF → {os.path.basename(path)}"}

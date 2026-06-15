@@ -14,13 +14,13 @@ from PyInstaller.utils.hooks import collect_all
 
 pyside6_datas, pyside6_binaries, pyside6_hiddenimports = collect_all('PySide6')
 rl_datas, rl_binaries, rl_hiddenimports = collect_all('reportlab')
+pil_datas, pil_binaries, pil_hiddenimports = collect_all('PIL')
 
 # ── Modules we are NOT bundling — pass to Analysis.excludes ───────────────────
 _PYTHON_EXCLUDES = [
     # tkinter (not used with Qt backend)
     'tkinter', '_tkinter', 'turtle', 'turtledemo',
-    # Pillow (not used by jury tool)
-    'PIL',
+    # Pillow is required by reportlab (reportlab/lib/utils.py imports PIL at top-level)
     # pythonnet / clr_loader (replaced by Qt backend)
     'pythonnet', 'clr', 'clr_loader',
     # Unused PySide6 modules
@@ -210,10 +210,6 @@ def _keep_binary(dest_name):
     if n.startswith('webview/lib/') or '/webview/lib/' in n:
         return False
 
-    # Drop PIL/Pillow extension modules (.pyd) — not used by jury tool
-    if n.startswith('pil/') or '/pil/' in n:
-        return False
-
     return True
 
 
@@ -259,10 +255,6 @@ def _keep_data(dest_name):
     if n.startswith('clr_loader/') or '/clr_loader/' in n:
         return False
 
-    # PIL / Pillow data files
-    if n.startswith('pil/') or '/pil/' in n:
-        return False
-
     # Python packaging metadata (RECORD, WHEEL, METADATA, etc.)
     if '.dist-info/' in n + '/':
         return False
@@ -273,17 +265,20 @@ def _keep_data(dest_name):
 a = Analysis(
     ['jury_v2.py'],
     pathex=[],
-    binaries=[*pyside6_binaries, *rl_binaries],
+    binaries=[*pyside6_binaries, *rl_binaries, *pil_binaries],
     datas=[
         ('icon.ico', '.'),
         ('jury_ui/static', 'jury_ui/static'),
         *pyside6_datas,
         *rl_datas,
+        *pil_datas,
     ],
     hiddenimports=[
         *pyside6_hiddenimports,
         *rl_hiddenimports,
+        *pil_hiddenimports,
         'reportlab',
+        'PIL',
         'qtpy',
         'webview.platforms.qt',
     ],

@@ -246,7 +246,7 @@ function StatusBar({ byStatus, struckCount, activePanel, numPanels, selectedJid 
       <span className="status-spacer"></span>
       <span className="status-cell status-cell-muted">Autosave on · every 15 min</span>
       <span className="status-cell status-cell-muted">Panel {activePanel} of {numPanels}</span>
-      <span className="status-cell status-cell-muted">v2.0.4 · PolyForm Noncommercial</span>
+      <span className="status-cell status-cell-muted">v2.0.5 · PolyForm Noncommercial</span>
     </footer>
   );
 }
