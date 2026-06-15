@@ -13,6 +13,7 @@ import os
 from PyInstaller.utils.hooks import collect_all
 
 pyside6_datas, pyside6_binaries, pyside6_hiddenimports = collect_all('PySide6')
+rl_datas, rl_binaries, rl_hiddenimports = collect_all('reportlab')
 
 # ── Modules we are NOT bundling — pass to Analysis.excludes ───────────────────
 _PYTHON_EXCLUDES = [
@@ -272,14 +273,17 @@ def _keep_data(dest_name):
 a = Analysis(
     ['jury_v2.py'],
     pathex=[],
-    binaries=pyside6_binaries,
+    binaries=[*pyside6_binaries, *rl_binaries],
     datas=[
         ('icon.ico', '.'),
         ('jury_ui/static', 'jury_ui/static'),
         *pyside6_datas,
+        *rl_datas,
     ],
     hiddenimports=[
         *pyside6_hiddenimports,
+        *rl_hiddenimports,
+        'reportlab',
         'qtpy',
         'webview.platforms.qt',
     ],
