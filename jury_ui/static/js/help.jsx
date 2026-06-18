@@ -48,7 +48,7 @@ function HelpQuickStart() {
     ["Multiple panels",
      "Use the Panel 1 / 2 / 3 tabs to track separate seating rounds or alternate configurations. Each panel has independent seat assignments."],
     ["Save your work",
-     "File → Save (Ctrl+S) writes a .json file you can reopen later. Both the classic and new UIs share the same file format."],
+     "File → Save (Ctrl+S) writes a .json file you can reopen later. File → Save As… lets you choose a different name or location."],
     ["Export PDF",
      "File → Export PDF generates a printable jury report with all juror details, statuses, and notes."],
     ["Upload CSV",
@@ -119,16 +119,15 @@ function HelpAbout() {
         </svg>
       </div>
       <div className="help-about-name">Jury Selection Tool</div>
-      <div className="help-about-version">Version 2.0.0</div>
-      <div className="help-about-publisher">Cole Mason</div>
+      <div className="help-about-version">Version 2.0.6</div>
+      <div className="help-about-publisher">hubcap12</div>
       <div className="help-about-divider"></div>
       <p className="help-about-desc">
         A desktop tool for managing and tracking juror seating, strikes,
         and final selections during jury selection proceedings.
       </p>
       <p className="help-about-desc">
-        Save files are plain JSON and load in both the classic (Tk) and
-        new (webview) frontends interchangeably.
+        Save files are plain JSON — portable and human-readable.
       </p>
     </div>
   );

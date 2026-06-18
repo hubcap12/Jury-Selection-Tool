@@ -9,7 +9,7 @@ function Modal({ title, onClose, children, footer }) {
   }, [onClose]);
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" role="dialog" aria-modal="true">
         <header className="modal-head">
           <h2 className="modal-title">{title}</h2>

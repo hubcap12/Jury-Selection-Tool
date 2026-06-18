@@ -1,6 +1,7 @@
 /* ── Tokens ───────────────────────────────────────────────────────────────── */
 
 :root {
+  --ui-scale: 1;
   --accent: #4f8cff;
   --accent-soft: color-mix(in oklch, var(--accent) 22%, transparent);
   --accent-softer: color-mix(in oklch, var(--accent) 12%, transparent);
@@ -82,9 +83,9 @@
   --txt-3:       #707690;
   --txt-4:       #9aa0b6;
 
-  --line:        rgba(15,20,40,0.07);
-  --line-2:      rgba(15,20,40,0.10);
-  --line-3:      rgba(15,20,40,0.16);
+  --line:        rgba(15,20,40,0.20);
+  --line-2:      rgba(15,20,40,0.30);
+  --line-3:      rgba(15,20,40,0.45);
 
   --shadow-card:    0 1px 0 rgba(255,255,255,0.8) inset, 0 1px 2px rgba(20,30,60,0.06), 0 4px 14px rgba(20,30,60,0.05);
   --shadow-pane:    0 1px 0 rgba(255,255,255,0.7) inset, 0 1px 2px rgba(20,30,60,0.04);
@@ -115,6 +116,17 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+
+/* Global UI scale — Chromium's `zoom` scales layout + text uniformly and the
+   flex/grid layout reflows correctly afterward.  #root is sized to the inverse
+   of the scale so that, once zoomed, it fills the viewport exactly (no overflow
+   at >1, no gap at <1).  clientX/Y stay in viewport pixels, so pointer drag and
+   hit-testing are unaffected; only the fixed context menu compensates. */
+#root {
+  zoom: var(--ui-scale);
+  width:  calc(100vw / var(--ui-scale));
+  height: calc(100vh / var(--ui-scale));
+}
 body {
   background: var(--bg-app);
   color: var(--txt);
@@ -137,7 +149,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .app-root {
   display: grid;
   grid-template-rows: 28px 1fr 26px;
-  height: 100vh;
+  height: 100%;
   background:
     radial-gradient(1200px 600px at 80% -10%, color-mix(in oklch, var(--accent) 8%, transparent), transparent 60%),
     radial-gradient(900px 500px at -5% 110%, color-mix(in oklch, var(--accent) 5%, transparent), transparent 60%),
@@ -271,7 +283,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .col-center > .seat-grid-wrap { flex: 1 1 0; min-height: 0; }
 .col-center > .detail-wrap {
   flex: 0 0 auto;
-  min-height: 120px;
+  min-height: 320px;
   position: relative;
   overflow: hidden;
   padding: 14px 22px 16px;
@@ -290,6 +302,8 @@ input, select, textarea { font: inherit; color: inherit; }
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .sash-detail { cursor: ns-resize; }
 
@@ -326,6 +340,7 @@ input, select, textarea { font: inherit; color: inherit; }
   flex: 0 0 4px;
   flex-shrink: 0;
   cursor: ns-resize;
+  touch-action: none;
   background: var(--line-2);
   transition: background 0.12s;
   position: relative;
@@ -338,6 +353,7 @@ input, select, textarea { font: inherit; color: inherit; }
   flex: 0 0 4px;
   flex-shrink: 0;
   align-self: stretch;
+  touch-action: none;
   cursor: ew-resize;
   background: var(--line-2);
   transition: background 0.12s;
@@ -448,6 +464,67 @@ input, select, textarea { font: inherit; color: inherit; }
   border-color: var(--danger-bd);
 }
 .btn-danger:hover { background: color-mix(in oklch, var(--c-struck) 15%, var(--bg-pane)); }
+
+/* ── Freeze button ───────────────────────────────────────────────────────── */
+/* Sits above the freeze overlay (z-index 9001 > overlay 9000) so it stays  */
+/* clickable while everything else is blocked.                               */
+.btn-freeze {
+  flex: none;
+  position: relative;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  border: 2px solid rgba(196, 122, 26, 0.65);
+  background: color-mix(in oklch, #c47a1a 12%, var(--bg-btn));
+  color: #c47a1a;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+[data-theme="dark"] .btn-freeze {
+  border-color: rgba(218, 155, 60, 0.55);
+  background: color-mix(in oklch, #da9b3c 9%, var(--bg-btn));
+  color: #da9b3c;
+}
+.btn-freeze:hover {
+  background: color-mix(in oklch, #c47a1a 22%, var(--bg-btn));
+  border-color: #c47a1a;
+}
+[data-theme="dark"] .btn-freeze:hover {
+  background: color-mix(in oklch, #da9b3c 18%, var(--bg-btn));
+  border-color: #da9b3c;
+}
+.btn-freeze.is-frozen {
+  position: relative;
+  z-index: 9001; /* above the freeze overlay (9000) so it stays clickable */
+  border-color: #e03535;
+  background: color-mix(in oklch, #e03535 16%, var(--bg-btn));
+  color: #e03535;
+  animation: freeze-pulse 1.8s ease-in-out infinite;
+}
+.btn-freeze.is-frozen:hover {
+  background: color-mix(in oklch, #e03535 26%, var(--bg-btn));
+}
+@keyframes freeze-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 53, 53, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(224, 53, 53, 0.28); }
+}
+
+/* ── Freeze overlay ──────────────────────────────────────────────────────── */
+.freeze-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  cursor: not-allowed;
+  background: rgba(0, 4, 20, 0.22);
+  pointer-events: all;
+}
+[data-theme="light"] .freeze-overlay {
+  background: rgba(0, 4, 20, 0.10);
+}
 
 /* ── Control bar ─────────────────────────────────────────────────────────── */
 
@@ -834,9 +911,12 @@ input, select, textarea { font: inherit; color: inherit; }
 .detail-grid {
   display: grid;
   grid-template-columns: 78px 1fr;
+  grid-template-rows: auto auto 1fr;
   column-gap: 12px;
   row-gap: 10px;
   align-items: start;
+  flex: 1 1 0;
+  min-height: 0;
 }
 .detail-label {
   color: var(--txt-3);
@@ -1052,20 +1132,44 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* ── Stage-2 additions ─────────────────────────────────────────────────── */
 
-/* Drag-and-drop affordances */
+/* Pointer drag — replaces HTML5 Drag API for mouse + touch/stylus support */
+.seat.is-draggable { touch-action: none; cursor: grab; }
+.jrow.is-draggable { touch-action: none; cursor: grab; }
+
+/* Drop-target highlight — seat tiles */
 .seat.is-drag-over {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-card);
   transform: translateY(-2px);
 }
+
+/* Drop-target highlight — pool pane (unseat) */
 .pane.pane-pool.is-drag-over {
   background: color-mix(in oklch, var(--accent) 6%, var(--bg-pane));
   outline: 2px dashed var(--accent);
   outline-offset: -3px;
 }
-.jrow[draggable="true"] { cursor: grab; }
-.jrow[draggable="true"]:active { cursor: grabbing; }
-.seat[draggable="true"]:active { cursor: grabbing; }
+
+/* Drop-target highlight — excused pane */
+.pane.pane-excused.is-drag-over {
+  background: color-mix(in oklch, var(--c-excused) 8%, var(--bg-pane));
+  outline: 2px dashed var(--c-excused);
+  outline-offset: -3px;
+}
+
+/* Drop-target highlight — struck panes */
+.pane.pane-struck.is-drag-over {
+  background: color-mix(in oklch, var(--c-struck) 8%, var(--bg-pane));
+  outline: 2px dashed var(--c-struck);
+  outline-offset: -3px;
+}
+
+/* Drop-target highlight — final jury pane */
+.pane.pane-final.is-drag-over {
+  background: color-mix(in oklch, var(--c-final) 10%, var(--bg-pane));
+  outline: 2px dashed var(--c-final);
+  outline-offset: -3px;
+}
 
 /* Pool chip in detail head when juror not seated */
 .chip-pool {
@@ -1227,6 +1331,8 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   min-height: 0;
+  flex: 1 1 0;
+  align-self: stretch;
 }
 .rte-toolbar {
   display: flex; align-items: center; gap: 4px;
@@ -1251,8 +1357,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .rte-sep { width: 1px; height: 16px; background: var(--line-2); margin: 0 2px; }
 
 .rte-content {
-  min-height: 76px;
-  max-height: 220px;
+  flex: 1 1 0;
+  min-height: 52px; /* ~2 lines of text */
   overflow-y: auto;
   padding: 8px 10px;
   outline: none;
@@ -1326,6 +1432,22 @@ input, select, textarea { font: inherit; color: inherit; }
   width: 16px; height: 16px;
   accent-color: var(--accent);
   cursor: pointer;
+}
+.prefs-scale {
+  display: flex; align-items: center; gap: 10px;
+}
+.prefs-range {
+  width: 150px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.prefs-scale-val {
+  min-width: 40px;
+  text-align: right;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--txt-2);
+  font-weight: 600;
 }
 .prefs-row .input,
 .prefs-row .select { min-width: 110px; }

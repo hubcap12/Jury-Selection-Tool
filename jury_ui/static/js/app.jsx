@@ -81,6 +81,13 @@ function JuryApp() {
   const [detailHeight, setDetailHeight]    = React.useState(340);
   const [leftFracs, setLeftFracs]          = React.useState([1.4, 0.7, 0.7, 0.7, 0.5]);
   const [rightFracs, setRightFracs]        = React.useState([1.3, 1.0]);
+  const [dragEnabled, setDragEnabled]      = React.useState(true);
+  const [uiScale, setUiScale]             = React.useState(1);
+  const [frozen, setFrozen]               = React.useState(false);
+  // Ref so the keyboard handler ([] deps) can read the current frozen value
+  // without being recreated every time frozen changes.
+  const frozenRef = React.useRef(false);
+  frozenRef.current = frozen;
 
   // Initial state from Python (or sample fallback).
   React.useEffect(() => {
@@ -102,8 +109,16 @@ function JuryApp() {
       if (Array.isArray(s.right_fracs) && s.right_fracs.length) setRightFracs(s.right_fracs);
       if (s.selected_seat) setSelectedSeat(s.selected_seat);
       if (s.selected_final) setSelectedFinal(s.selected_final);
+      if (s.drag_enabled != null) setDragEnabled(!!s.drag_enabled);
+      if (s.ui_scale) setUiScale(s.ui_scale);
     });
   }, []);
+
+  // Apply the global UI scale as a CSS variable.  #root keys its `zoom` off
+  // this var, so the whole UI scales uniformly and the layout reflows.
+  React.useEffect(() => {
+    document.documentElement.style.setProperty("--ui-scale", String(uiScale || 1));
+  }, [uiScale]);
 
   const selectedJuror = React.useMemo(() => {
     if (selectedJid != null) return jurors.find(j => j.id === selectedJid);
@@ -196,18 +211,25 @@ function JuryApp() {
     });
   }, []);
 
-  // Drag a juror onto a seat — assigns or swaps.
-  const handleDropOnSeat = React.useCallback(async (jid, seatNo) => {
-    const r = await pyCall("assign_seat", jid, activePanel, seatNo);
-    applyResult(r);
-    setSelectedSeat(seatNo);
-    setSelectedJid(null);
+  // Unified pointer-drag drop handler.  Handles all drop zones:
+  // seat (assign/swap), pool (unseat), excused/struck/final (set status).
+  const handlePointerDrop = React.useCallback(async (jid, zone, data) => {
+    switch (zone) {
+      case "seat":
+        if (data.seatNo) {
+          applyResult(await pyCall("assign_seat", jid, activePanel, data.seatNo));
+          setSelectedSeat(data.seatNo);
+          setSelectedJid(null);
+        }
+        break;
+      case "pool":        applyResult(await pyCall("unseat",     jid));                    break;
+      case "excused":     applyResult(await pyCall("set_status", jid, "excused"));         break;
+      case "struck-def":  applyResult(await pyCall("set_status", jid, "struck_def"));      break;
+      case "struck-pro":  applyResult(await pyCall("set_status", jid, "struck_pro"));      break;
+      case "struck-both": applyResult(await pyCall("set_status", jid, "struck_both"));     break;
+      case "final":       applyResult(await pyCall("mark_final", jid));                    break;
+    }
   }, [activePanel, applyResult]);
-
-  // Drag a juror onto the Preliminary Pool pane — unseat.
-  const handleUnseatDrop = React.useCallback(async (jid) => {
-    applyResult(await pyCall("unseat", jid));
-  }, [applyResult]);
 
   // Detail-panel handlers.
   const handleSetStatus = React.useCallback(async (jid, status) => {
@@ -241,19 +263,24 @@ function JuryApp() {
     e.preventDefault();
     const y0 = e.clientY;
     const h0 = detailHeight;
+    const pid = e.pointerId;
     const onMove = (ev) => {
-      setDetailHeight(Math.max(120, Math.min(700, h0 - (ev.clientY - y0))));
+      if (ev.pointerId !== pid) return;
+      setDetailHeight(Math.max(320, Math.min(700, h0 - (ev.clientY - y0))));
     };
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",  onUp);
+    const onUp = (ev) => {
+      if (ev.pointerId !== pid) return;
+      document.removeEventListener("pointermove",   onMove);
+      document.removeEventListener("pointerup",     onUp);
+      document.removeEventListener("pointercancel", onUp);
       document.body.style.cursor     = "";
       document.body.style.userSelect = "";
     };
     document.body.style.cursor     = "ns-resize";
     document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",  onUp);
+    document.addEventListener("pointermove",   onMove);
+    document.addEventListener("pointerup",     onUp);
+    document.addEventListener("pointercancel", onUp);
   };
 
   const startHDrag = (side, e) => {
@@ -262,20 +289,25 @@ function JuryApp() {
     const w0 = side === "left" ? leftWidth : rightWidth;
     const setter = side === "left" ? setLeftWidth : setRightWidth;
     const sign   = side === "left" ? 1 : -1;
+    const pid = e.pointerId;
 
     const onMove = (ev) => {
+      if (ev.pointerId !== pid) return;
       setter(Math.max(160, Math.min(520, w0 + sign * (ev.clientX - x0))));
     };
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",  onUp);
+    const onUp = (ev) => {
+      if (ev.pointerId !== pid) return;
+      document.removeEventListener("pointermove",   onMove);
+      document.removeEventListener("pointerup",     onUp);
+      document.removeEventListener("pointercancel", onUp);
       document.body.style.cursor     = "";
       document.body.style.userSelect = "";
     };
     document.body.style.cursor     = "ew-resize";
     document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",  onUp);
+    document.addEventListener("pointermove",   onMove);
+    document.addEventListener("pointerup",     onUp);
+    document.addEventListener("pointercancel", onUp);
   };
 
   // Left-column action buttons.  `selectedJuror` is referenced inside, so it
@@ -339,6 +371,15 @@ function JuryApp() {
   // Global keyboard shortcuts.
   React.useEffect(() => {
     const handler = (e) => {
+      // F9 unfreezes — works in any state, never activates freeze.
+      if (e.key === "F9") {
+        e.preventDefault();
+        if (frozenRef.current) setFrozen(false);
+        return;
+      }
+      // All other shortcuts are blocked while frozen.
+      if (frozenRef.current) return;
+
       if (e.key === "F1") {
         e.preventDefault();
         setModal(m => m ? null : { kind: "help", tab: "quickstart" });
@@ -384,7 +425,7 @@ function JuryApp() {
   showToastRef.current = showToast;
 
   return (
-    <div className="app-root">
+    <div className={"app-root" + (frozen ? " is-frozen" : "")}>
       <MenuBar onCommand={(cmd) => {
         const handlers = {
           new:        () => setModal({ kind: "confirmReset" }),
@@ -414,13 +455,14 @@ function JuryApp() {
           theme={t.theme}
           onToggleTheme={() => setTweak("theme", t.theme === "dark" ? "light" : "dark")}
           onAction={handleAction}
-          onUnseatDrop={handleUnseatDrop}
+          onDrop={handlePointerDrop}
+          dragEnabled={dragEnabled}
           onJurorContextMenu={handleContextMenu}
           fracs={leftFracs} setFracs={setLeftFracs}
           style={{ width: leftWidth }}
         />
 
-        <div className="hsash" onMouseDown={(e) => startHDrag("left", e)} />
+        <div className="hsash" onPointerDown={(e) => startHDrag("left", e)} />
 
         <main className="col col-center">
           <ControlBar
@@ -432,6 +474,7 @@ function JuryApp() {
             activePanel={activePanel} setActivePanel={handleSetPanel}
             numPanels={numPanels}
             theme={t.theme} setTheme={v => setTweak("theme", v)}
+            frozen={frozen} onToggleFreeze={() => setFrozen(f => !f)}
           />
 
           <SeatGrid
@@ -441,11 +484,12 @@ function JuryApp() {
             bySeat={activePanelBySeat}
             selectedSeat={selectedSeat}
             onSelectSeat={handleSelectSeat}
-            onDropJuror={handleDropOnSeat}
+            onDrop={handlePointerDrop}
+            dragEnabled={dragEnabled}
             onJurorContextMenu={handleContextMenu}
           />
 
-          <div className="sash sash-detail" onMouseDown={startDetailDrag} />
+          <div className="sash sash-detail" onPointerDown={startDetailDrag} />
 
           <div className="detail-wrap" style={{ height: detailHeight }}>
             <DetailEditor
@@ -462,7 +506,7 @@ function JuryApp() {
           </div>
         </main>
 
-        <div className="hsash" onMouseDown={(e) => startHDrag("right", e)} />
+        <div className="hsash" onPointerDown={(e) => startHDrag("right", e)} />
 
         <RightColumn
           finals={byStatus.final}
@@ -566,6 +610,8 @@ function JuryApp() {
                 setNumPanels(n);
                 if (activePanel > n) setActivePanel(1);
               }
+              if (r.values?.drag_enabled != null) setDragEnabled(!!r.values.drag_enabled);
+              if (r.values?.ui_scale) setUiScale(r.values.ui_scale);
             } else {
               showToast(r?.msg || "Failed to save preferences");
             }
@@ -586,11 +632,14 @@ function JuryApp() {
         />
       )}
 
+      {frozen && <div className="freeze-overlay" />}
+
       {ctxMenu && (
         <ContextMenu
           juror={ctxMenu.juror}
           x={ctxMenu.x}
           y={ctxMenu.y}
+          scale={uiScale}
           onClose={() => setCtxMenu(null)}
           onSetStatus={(jid, status) => { handleSetStatus(jid, status); }}
           onSetRating={(jid, rating) => { handleSetRating(jid, rating); }}

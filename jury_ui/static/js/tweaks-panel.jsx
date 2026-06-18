@@ -271,19 +271,24 @@ function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
     const sx = e.clientX, sy = e.clientY;
     const startRight = window.innerWidth - r.right;
     const startBottom = window.innerHeight - r.bottom;
+    const pid = e.pointerId;
     const move = (ev) => {
+      if (ev.pointerId !== pid) return;
       offsetRef.current = {
         x: startRight - (ev.clientX - sx),
         y: startBottom - (ev.clientY - sy),
       };
       clampToViewport();
     };
-    const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
+    const up = (ev) => {
+      if (ev.pointerId !== pid) return;
+      window.removeEventListener('pointermove',   move);
+      window.removeEventListener('pointerup',     up);
+      window.removeEventListener('pointercancel', up);
     };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    window.addEventListener('pointermove',   move);
+    window.addEventListener('pointerup',     up);
+    window.addEventListener('pointercancel', up);
   };
 
   if (!open) return null;
@@ -292,10 +297,10 @@ function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
       <style>{__TWEAKS_STYLE}</style>
       <div ref={dragRef} className="twk-panel" data-noncommentable=""
            style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
-        <div className="twk-hd" onMouseDown={onDragStart}>
+        <div className="twk-hd" onPointerDown={onDragStart}>
           <b>{title}</b>
           <button className="twk-x" aria-label="Close tweaks"
-                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={dismiss}>✕</button>
         </div>
         <div className="twk-body">

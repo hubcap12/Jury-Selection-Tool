@@ -117,6 +117,8 @@ class JuryAPI:
             "selected_final":  self.selected_final,
             "theme":           self.theme,
             "last_save_path":  self._last_save_path,
+            "drag_enabled":    bool(SETTINGS.get("drag_enabled", DEFAULT_SETTINGS.get("drag_enabled", True))),
+            "ui_scale":        max(0.6, min(2.0, float(SETTINGS.get("ui_scale", DEFAULT_SETTINGS.get("ui_scale", 1.0))))),
         }
 
     def save_layout(self, layout: dict[str, Any]) -> dict[str, Any]:

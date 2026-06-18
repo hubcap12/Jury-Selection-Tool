@@ -1,30 +1,40 @@
 /* Custom context menu for juror rows and seats */
 
-function ContextMenu({ juror, x, y, onClose,
+function ContextMenu({ juror, x, y, scale = 1, onClose,
                         onSetStatus, onSetRating,
                         onMarkFinal, onUnmarkFinal,
                         onUnseat, onEdit }) {
   const ref = React.useRef(null);
 
-  // Adjust position so the menu never goes off-screen
+  // Adjust position so the menu never goes off-screen.
+  //
+  // The menu is `position: fixed` inside #root, which carries the global
+  // `zoom: var(--ui-scale)`.  A fixed element's `left`/`top` are multiplied
+  // by that zoom, while pointer clientX/Y and getBoundingClientRect both
+  // report real (viewport) pixels.  So we compute the desired on-screen
+  // position in real px, then divide by the scale to get the `left`/`top`
+  // value that renders there.
   React.useLayoutEffect(() => {
     if (!ref.current) return;
+    const Z   = scale || 1;
     const r   = ref.current.getBoundingClientRect();
     const vw  = window.innerWidth;
     const vh  = window.innerHeight;
-    ref.current.style.left = (r.right  > vw ? x - r.width  : x) + "px";
-    ref.current.style.top  = (r.bottom > vh ? y - r.height : y) + "px";
+    const renderLeft = (r.right  > vw) ? x - r.width  : x;
+    const renderTop  = (r.bottom > vh) ? y - r.height : y;
+    ref.current.style.left = (renderLeft / Z) + "px";
+    ref.current.style.top  = (renderTop  / Z) + "px";
   }, []);
 
   // Close on outside click or Escape
   React.useEffect(() => {
     const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     const onKey  = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown",   onKey);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown",     onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown",   onKey);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown",     onKey);
     };
   }, []);
 
@@ -45,7 +55,7 @@ function ContextMenu({ juror, x, y, onClose,
   const Sep = () => <div className="ctx-sep" />;
 
   return (
-    <div ref={ref} className="ctx-menu" style={{ left: x, top: y }}>
+    <div ref={ref} className="ctx-menu" style={{ left: x / (scale || 1), top: y / (scale || 1) }}>
 
       {/* Header */}
       <div className="ctx-header">

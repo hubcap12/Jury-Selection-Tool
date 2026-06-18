@@ -27,6 +27,10 @@ EDITABLE_KEYS: tuple[str, ...] = (
     "work_dir",
     # Rich-text defaults
     "rte_font", "rte_bold", "rte_italic", "rte_underline",
+    # Input
+    "drag_enabled",
+    # Display
+    "ui_scale",
 )
 
 PAGE_SIZE_CHOICES = ("Letter", "A4", "Legal")

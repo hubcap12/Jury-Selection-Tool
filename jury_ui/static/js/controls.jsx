@@ -99,6 +99,7 @@ function ControlBar({
   setRows, setCols, setJurySize, setCorner,
   activePanel, setActivePanel, numPanels,
   theme, setTheme,
+  frozen, onToggleFreeze,
 }) {
   return (
     <div className="control-bar">
@@ -113,6 +114,13 @@ function ControlBar({
         </div>
 
         <div className="control-group control-group-right">
+          <button
+            className={"btn-freeze" + (frozen ? " is-frozen" : "")}
+            onClick={onToggleFreeze}
+            title={frozen ? "Press F9 or click to unfreeze" : "Freeze screen — disables all controls"}
+          >
+            {frozen ? "■ Frozen · F9" : "Freeze"}
+          </button>
           <PanelTabs active={activePanel} onChange={setActivePanel} count={numPanels}/>
           <div className="control-spacer"></div>
           <ThemeToggle theme={theme} onChange={setTheme}/>
@@ -190,6 +198,12 @@ function DetailEditor({ juror, panel, onSaveKeywords, onSaveNotes, onSetStatus,
         <input className="input"
                value={kw}
                onChange={(e) => setKw(e.target.value)}
+               onKeyDown={(e) => {
+                 if (e.key === "Enter") {
+                   e.preventDefault();
+                   if (juror && onSaveKeywords) onSaveKeywords(juror.id, kw);
+                 }
+               }}
                onBlur={() => juror && onSaveKeywords && onSaveKeywords(juror.id, kw)}
                placeholder="Add keywords…"/>
 
@@ -246,7 +260,7 @@ function StatusBar({ byStatus, struckCount, activePanel, numPanels, selectedJid 
       <span className="status-spacer"></span>
       <span className="status-cell status-cell-muted">Autosave on · every 15 min</span>
       <span className="status-cell status-cell-muted">Panel {activePanel} of {numPanels}</span>
-      <span className="status-cell status-cell-muted">v2.0.5 · PolyForm Noncommercial</span>
+      <span className="status-cell status-cell-muted">v2.0.6 · PolyForm Noncommercial</span>
     </footer>
   );
 }

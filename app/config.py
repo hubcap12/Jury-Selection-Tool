@@ -46,6 +46,8 @@ DEFAULT_SETTINGS: dict = {
     "both_height":      100,
     "dark_colors":      {},
     "light_colors":     {},
+    "drag_enabled":     True,
+    "ui_scale":         1.0,
 }
 
 

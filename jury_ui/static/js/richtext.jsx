@@ -195,33 +195,33 @@ function RichTextEditor({ value, onSave, placeholder }) {
         <button
           type="button"
           className={"rte-btn" + (toolbar.bold ? " is-active" : "")}
-          onMouseDown={(e) => { e.preventDefault(); cmd("bold"); }}
+          onPointerDown={(e) => { e.preventDefault(); cmd("bold"); }}
           title="Bold (Ctrl+B)"
         ><b>B</b></button>
         <button
           type="button"
           className={"rte-btn" + (toolbar.italic ? " is-active" : "")}
-          onMouseDown={(e) => { e.preventDefault(); cmd("italic"); }}
+          onPointerDown={(e) => { e.preventDefault(); cmd("italic"); }}
           title="Italic (Ctrl+I)"
         ><i>I</i></button>
         <button
           type="button"
           className={"rte-btn" + (toolbar.underline ? " is-active" : "")}
-          onMouseDown={(e) => { e.preventDefault(); cmd("underline"); }}
+          onPointerDown={(e) => { e.preventDefault(); cmd("underline"); }}
           title="Underline (Ctrl+U)"
         ><u>U</u></button>
         <span className="rte-sep"></span>
         <button
           type="button"
           className="rte-btn"
-          onMouseDown={(e) => { e.preventDefault(); cmd("insertUnorderedList"); }}
+          onPointerDown={(e) => { e.preventDefault(); cmd("insertUnorderedList"); }}
           title="Bullet list"
         >•</button>
         <span className="rte-sep"></span>
         <button
           type="button"
           className="rte-btn rte-btn-text"
-          onMouseDown={(e) => { e.preventDefault(); clearFmt(); }}
+          onPointerDown={(e) => { e.preventDefault(); clearFmt(); }}
           title="Strip formatting from selection"
         >Clear fmt</button>
       </div>
@@ -229,11 +229,12 @@ function RichTextEditor({ value, onSave, placeholder }) {
         ref={ref}
         className="rte-content"
         contentEditable
+        inputMode="text"
         suppressContentEditableWarning={true}
         data-placeholder={placeholder || ""}
         onInput={onInput}
         onKeyUp={onKey}
-        onMouseUp={onSel}
+        onPointerUp={onSel}
         onBlur={fireSaveNow}
         spellCheck={true}
       ></div>

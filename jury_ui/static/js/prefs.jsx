@@ -133,6 +133,26 @@ function PreferencesModal({ initial, onSave, onClose, onPickWorkDir, onSaveLayou
           </PrefsRow>
         </PrefsSection>
 
+        <PrefsSection title="Display">
+          <PrefsRow label="UI scale" hint="size of all text and controls">
+            <div className="prefs-scale">
+              <input type="range" className="prefs-range"
+                     min="0.8" max="1.6" step="0.05"
+                     value={v.ui_scale ?? 1}
+                     onChange={(e) => set("ui_scale")(parseFloat(e.target.value))} />
+              <span className="prefs-scale-val">{Math.round((v.ui_scale ?? 1) * 100)}%</span>
+            </div>
+          </PrefsRow>
+        </PrefsSection>
+
+        <PrefsSection title="Input &amp; interaction">
+          <PrefsRow label="Enable drag &amp; drop" hint="drag jurors to seats, status panes, or the final jury list">
+            <input type="checkbox" className="prefs-check"
+                   checked={!!v.drag_enabled}
+                   onChange={(e) => set("drag_enabled")(e.target.checked)} />
+          </PrefsRow>
+        </PrefsSection>
+
         <PrefsSection title="Working directory">
           <PrefsRow label="Folder" hint="default save & autosave location">
             <div className="prefs-row-path">

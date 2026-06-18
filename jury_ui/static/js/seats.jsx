@@ -13,43 +13,34 @@ function RatingArrows({ rating }) {
   );
 }
 
-// Seat tile.  Props are kept "primitive enough" that React.memo (applied
-// below) can skip the re-render when nothing about this tile changed.  The
-// parent passes stable callbacks (onSelectSeat / onDropJuror / onContextMenu)
-// and we synthesise the actual DOM handlers internally using our own seatNo.
+// Seat tile.  Pointer-Events drag replaces the HTML5 Drag API so that
+// touch input (finger on tablet) works identically to mouse.  Both empty
+// and occupied tiles carry data-dropzone / data-seat-no so the drag
+// engine can find them via elementFromPoint during a drag.
 const Seat = React.memo(function Seat({
-  seatNo, juror, selected, onSelectSeat, onDropJuror, onContextMenu,
+  seatNo, juror, selected, onSelectSeat, onDrop, onContextMenu, dragEnabled,
 }) {
-  const [dragOver, setDragOver] = React.useState(false);
-
   const handleClick = React.useCallback(() => {
+    if (pointerDrag.shouldSuppressClick()) return;
     if (onSelectSeat) onSelectSeat(seatNo);
   }, [onSelectSeat, seatNo]);
 
-  const handleDrop = React.useCallback((e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const jid = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (!Number.isNaN(jid) && onDropJuror) onDropJuror(jid, seatNo);
-  }, [onDropJuror, seatNo]);
-
-  const dropProps = {
-    onDragOver: (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      if (!dragOver) setDragOver(true);
-    },
-    onDragLeave: () => setDragOver(false),
-    onDrop: handleDrop,
-  };
+  const handlePointerDown = juror && dragEnabled
+    ? (e) => {
+        pointerDrag.start(juror.id, e, e.currentTarget, (zone, data) => {
+          if (onDrop) onDrop(juror.id, zone, data);
+        });
+      }
+    : undefined;
 
   if (!juror) {
     return (
       <button
-        className={"seat seat-empty" + (dragOver ? " is-drag-over" : "")}
+        className="seat seat-empty"
         onClick={handleClick}
         aria-label={`Seat ${seatNo}, empty`}
-        {...dropProps}
+        data-dropzone="seat"
+        data-seat-no={seatNo}
       >
         <span className="seat-stripe" aria-hidden="true"></span>
         <header className="seat-eyebrow">
@@ -75,21 +66,18 @@ const Seat = React.memo(function Seat({
   const cls = [
     "seat",
     `seat-${juror.status}`,
-    selected ? "is-selected" : "",
-    dragOver ? "is-drag-over" : "",
-  ].join(" ").trim();
+    selected        ? "is-selected"  : "",
+    dragEnabled     ? "is-draggable" : "",
+  ].filter(Boolean).join(" ");
 
   return (
     <button
       className={cls}
       onClick={handleClick}
-      draggable={true}
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", String(juror.id));
-        e.dataTransfer.effectAllowed = "move";
-      }}
+      onPointerDown={handlePointerDown}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu && onContextMenu(juror, e.clientX, e.clientY); }}
-      {...dropProps}
+      data-dropzone="seat"
+      data-seat-no={seatNo}
     >
       <span className="seat-stripe" aria-hidden="true"></span>
       <header className="seat-eyebrow">
@@ -122,12 +110,8 @@ function seatNum(r, c, rows, cols, corner) {
 
 const SeatGrid = React.memo(function SeatGrid({
   rows, cols, corner, bySeat, selectedSeat,
-  onSelectSeat, onDropJuror, onJurorContextMenu,
+  onSelectSeat, onDrop, onJurorContextMenu, dragEnabled,
 }) {
-  // `bySeat` is the pre-indexed { seatNo: juror } map, scoped to the active
-  // panel — built once in the parent via useMemo.  Seat is memoized and
-  // receives stable callbacks, so when one juror changes, only that single
-  // tile re-renders — the other (rows*cols - 1) tiles bail out via memo.
   const cells = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -140,8 +124,9 @@ const SeatGrid = React.memo(function SeatGrid({
           juror={juror}
           selected={selectedSeat === seatNo}
           onSelectSeat={onSelectSeat}
-          onDropJuror={onDropJuror}
+          onDrop={onDrop}
           onContextMenu={onJurorContextMenu}
+          dragEnabled={dragEnabled}
         />
       );
     }
